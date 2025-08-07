@@ -1,7 +1,7 @@
 sy:
   datasource:
     username: root
-    password: Zhang20030419.
+    password: yoursqlpwd
     driver-class-name: com.mysql.cj.jdbc.Driver
     port: 3306
     host: localhost
