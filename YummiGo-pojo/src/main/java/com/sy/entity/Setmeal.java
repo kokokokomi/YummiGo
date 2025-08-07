@@ -3,6 +3,7 @@ package com.sy.entity;
 import com.baomidou.mybatisplus.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Date;
 import lombok.Data;
 
@@ -32,9 +33,9 @@ public class Setmeal {
     @Version
     private Integer version;
 
-    private Date createTime;
+    private LocalDateTime createTime;
 
-    private Date updateTime;
+    private LocalDateTime updateTime;
 
     private Long createUser;
 

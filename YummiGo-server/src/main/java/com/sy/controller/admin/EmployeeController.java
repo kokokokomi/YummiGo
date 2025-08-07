@@ -3,9 +3,11 @@ package com.sy.controller.admin;
 import com.sy.constant.JwtClaimsConstant;
 import com.sy.dto.EmployeeDTO;
 import com.sy.dto.EmployeeLoginDTO;
+import com.sy.dto.EmployeePageQueryDTO;
 import com.sy.entity.Employee;
 import com.sy.enumeration.ResultCodeEnum;
 import com.sy.properties.JwtProperties;
+import com.sy.result.PageResult;
 import com.sy.result.Result;
 import com.sy.service.EmployeeService;
 import com.sy.utils.JwtUtil;
@@ -13,6 +15,7 @@ import com.sy.vo.EmployeeLoginVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -75,5 +78,18 @@ public class EmployeeController {
         log.info("add employee:{}", employeeDTO);
         Result result=employeeService.addEmployee(employeeDTO);
         return result;
+    }
+
+    /**
+     * Retrieve employee list with pagination/従業員のページネーション検索/ 员工分页查询
+     * @param employeePageQueryDTO
+     * @return
+     */
+    @GetMapping("page")
+    @Operation(summary = "query employee page")
+    public Result<PageResult> pageQuery(@ParameterObject EmployeePageQueryDTO employeePageQueryDTO){
+        log.info("page:{}", employeePageQueryDTO);
+        PageResult result=employeeService.pageQuery(employeePageQueryDTO);
+        return Result.success(result);
     }
 }

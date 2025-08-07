@@ -3,6 +3,7 @@ package com.sy.entity;
 import com.baomidou.mybatisplus.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Date;
 import lombok.Data;
 
@@ -31,7 +32,7 @@ public class ShoppingCart {
 
     private BigDecimal amount;
 
-    private Date createTime;
+    private LocalDateTime createTime;
 
     private Integer isDeleted;
 
