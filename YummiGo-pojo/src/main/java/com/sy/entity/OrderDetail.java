@@ -1,9 +1,7 @@
 package com.sy.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
+
 import java.math.BigDecimal;
 import lombok.Data;
 
@@ -13,6 +11,7 @@ import lombok.Data;
 @TableName(value ="order_detail")
 @Data
 public class OrderDetail {
+    @TableId
     private Long id;
 
     private String name;
@@ -33,5 +32,6 @@ public class OrderDetail {
 
     private Integer isDeleted;
 
+    @Version
     private Integer version;
 }

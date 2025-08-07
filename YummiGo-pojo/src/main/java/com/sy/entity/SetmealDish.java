@@ -1,9 +1,7 @@
 package com.sy.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
+
 import java.math.BigDecimal;
 import lombok.Data;
 
@@ -13,6 +11,7 @@ import lombok.Data;
 @TableName(value ="setmeal_dish")
 @Data
 public class SetmealDish {
+    @TableId
     private Long id;
 
     private Long setmealId;
@@ -27,5 +26,6 @@ public class SetmealDish {
 
     private Integer isDeleted;
 
+    @Version
     private Integer version;
 }

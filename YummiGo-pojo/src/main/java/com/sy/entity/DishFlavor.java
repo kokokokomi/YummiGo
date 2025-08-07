@@ -1,9 +1,6 @@
 package com.sy.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
 /**
@@ -12,6 +9,7 @@ import lombok.Data;
 @TableName(value ="dish_flavor")
 @Data
 public class DishFlavor {
+    @TableId
     private Long id;
 
     private Long dishId;
@@ -22,5 +20,6 @@ public class DishFlavor {
 
     private Integer isDeleted;
 
+    @Version
     private Integer version;
 }
