@@ -1,9 +1,7 @@
 package com.sy.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
+
 import java.math.BigDecimal;
 import java.util.Date;
 import lombok.Data;
@@ -14,6 +12,7 @@ import lombok.Data;
 @TableName(value ="orders")
 @Data
 public class Orders {
+    @TableId
     private Long id;
 
     private String number;
@@ -64,5 +63,6 @@ public class Orders {
 
     private Integer isDeleted;
 
+    @Version
     private Integer version;
 }

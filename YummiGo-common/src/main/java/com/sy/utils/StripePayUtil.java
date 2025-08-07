@@ -24,7 +24,7 @@ import java.util.Map;
  * Stripe 支付工具类（多模块支持版本）
  * 提供创建支付意图、确认支付、申请退款等功能
  */
-@Component
+//@Component
 @Slf4j
 @ConditionalOnClass(name = "com.stripe.Stripe")
 public class StripePayUtil {

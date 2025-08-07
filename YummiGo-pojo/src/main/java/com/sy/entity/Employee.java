@@ -1,9 +1,8 @@
 package com.sy.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
+
+import java.time.LocalDateTime;
 import java.util.Date;
 import lombok.Data;
 
@@ -13,6 +12,7 @@ import lombok.Data;
 @TableName(value ="employee")
 @Data
 public class Employee {
+    @TableId
     private Long id;
 
     private String name;
@@ -25,15 +25,17 @@ public class Employee {
 
     private String sex;
 
+    //1 ok 0 locked
     private Integer status;
 
     private Integer isDeleted;
 
+    @Version
     private Integer version;
 
-    private Date createTime;
+    private LocalDateTime createTime;
 
-    private Date updateTime;
+    private LocalDateTime updateTime;
 
     private Long createUser;
 

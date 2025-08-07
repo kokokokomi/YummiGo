@@ -4,4 +4,5 @@ sy:
     password: Zhang20030419.
     driver-class-name: com.mysql.cj.jdbc.Driver
     port: 3306
-    host: local
+    host: localhost
+    database: yummigo
