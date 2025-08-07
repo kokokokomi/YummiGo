@@ -2,6 +2,7 @@ package com.sy.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -12,7 +13,7 @@ import lombok.Data;
  */
 @TableName(value ="dish")
 @Data
-public class Dish {
+public class Dish implements Serializable {
     @TableId
     private Long id;
 

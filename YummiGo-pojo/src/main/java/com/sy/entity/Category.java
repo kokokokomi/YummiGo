@@ -2,7 +2,11 @@ package com.sy.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 
+import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.Date;
+
+import lombok.Builder;
 import lombok.Data;
 
 /**
@@ -10,7 +14,8 @@ import lombok.Data;
  */
 @TableName(value ="category")
 @Data
-public class Category {
+@Builder
+public class Category implements Serializable {
     @TableId
     private Long id;
 
@@ -27,9 +32,9 @@ public class Category {
     @Version
     private Integer version;
 
-    private Date createTime;
+    private LocalDateTime createTime;
 
-    private Date updateTime;
+    private LocalDateTime updateTime;
 
     private Long createUser;
 
