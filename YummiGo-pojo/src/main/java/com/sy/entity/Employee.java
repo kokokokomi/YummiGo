@@ -2,16 +2,24 @@ package com.sy.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Date;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * @TableName employee
  */
 @TableName(value ="employee")
 @Data
-public class Employee {
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class Employee implements Serializable {
     @TableId
     private Long id;
 

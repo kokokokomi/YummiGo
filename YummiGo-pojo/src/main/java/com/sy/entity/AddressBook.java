@@ -2,6 +2,7 @@ package com.sy.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 
+import java.io.Serializable;
 import java.util.Date;
 import lombok.Data;
 
@@ -10,7 +11,7 @@ import lombok.Data;
  */
 @TableName(value ="address_book")
 @Data
-public class AddressBook {
+public class AddressBook implements Serializable {
     @TableId
     private Long id;
 

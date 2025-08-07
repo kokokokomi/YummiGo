@@ -5,13 +5,16 @@ import com.baomidou.mybatisplus.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Date;
+
+import lombok.Builder;
 import lombok.Data;
 
 /**
  * @TableName setmeal
  */
-@TableName(value ="setmeal")
+@TableName
 @Data
+@Builder
 public class Setmeal {
     @TableId
     private Long id;

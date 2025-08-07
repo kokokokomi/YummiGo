@@ -15,7 +15,9 @@ import com.sy.vo.EmployeeLoginVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.ibatis.annotations.Param;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -92,4 +94,35 @@ public class EmployeeController {
         PageResult result=employeeService.pageQuery(employeePageQueryDTO);
         return Result.success(result);
     }
+
+    /**
+     *disable/enable account/従業員アカウントの状態を更新/启用禁用员工账号
+     * @param status
+     * @param id
+     * @return
+     */
+    @PostMapping("status/{status}")
+    @Operation(summary = "disable/enable account")
+    public Result updateStatus(@PathVariable Integer status, Long id){
+        log.info("status:{},{}", status,id);
+        Result result=employeeService.updateStatus(status,id);
+        return result;
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "find employee by id")
+    public Result<Employee> getEmployeeById(@PathVariable Long id){
+        log.info("id:{}", id);
+        Employee employee = employeeService.getById(id);
+        employee.setPassword("*****");
+        return Result.success(employee);
+    }
+    @PutMapping
+    @Operation(summary = "edit employee")
+    public Result updateEmployee(@RequestBody EmployeeDTO employeeDTO){
+        log.info("updateEmployee:{}", employeeDTO);
+        Result result=employeeService.updateEmployee(employeeDTO);
+        return result;
+    }
+
 }
