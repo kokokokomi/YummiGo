@@ -3,6 +3,7 @@ package com.sy.entity;
 import com.baomidou.mybatisplus.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Date;
 import lombok.Data;
 
@@ -47,13 +48,13 @@ public class Orders {
 
     private String rejectionReason;
 
-    private Date cancelTime;
+    private LocalDateTime cancelTime;
 
-    private Date estimatedDeliveryTime;
+    private LocalDateTime estimatedDeliveryTime;
 
     private Integer deliveryStatus;
 
-    private Date deliveryTime;
+    private LocalDateTime deliveryTime;
 
     private Integer packAmount;
 
