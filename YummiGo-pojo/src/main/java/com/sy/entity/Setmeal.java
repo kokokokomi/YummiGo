@@ -2,6 +2,7 @@ package com.sy.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -15,7 +16,7 @@ import lombok.Data;
 @TableName
 @Data
 @Builder
-public class Setmeal {
+public class Setmeal extends BaseEntity implements Serializable {
     @TableId
     private Long id;
 
@@ -36,11 +37,4 @@ public class Setmeal {
     @Version
     private Integer version;
 
-    private LocalDateTime createTime;
-
-    private LocalDateTime updateTime;
-
-    private Long createUser;
-
-    private Long updateUser;
 }

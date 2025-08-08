@@ -13,9 +13,7 @@ public class DishPageQueryDTO implements Serializable {
 
     private String name;
 
-
     private Integer categoryId;
-
 
     private Integer status;
 

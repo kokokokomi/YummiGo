@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Employee implements Serializable {
+public class Employee extends BaseEntity implements Serializable {
     @TableId
     private Long id;
 
@@ -41,11 +41,4 @@ public class Employee implements Serializable {
     @Version
     private Integer version;
 
-    private LocalDateTime createTime;
-
-    private LocalDateTime updateTime;
-
-    private Long createUser;
-
-    private Long updateUser;
 }

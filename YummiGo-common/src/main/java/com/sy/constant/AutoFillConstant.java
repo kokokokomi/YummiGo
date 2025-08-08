@@ -2,6 +2,7 @@ package com.sy.constant;
 
 /**
  *Constants for auto-filling common fields
+ * not used
  */
 public class AutoFillConstant {
     public static final String SET_CREATE_TIME = "setCreateTime";

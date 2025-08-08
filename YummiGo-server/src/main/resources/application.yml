@@ -7,6 +7,9 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: auto
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
 
 spring:
   profiles:
@@ -29,3 +32,8 @@ sy:
     admin-secret-key: kokomikokomikokomikokomikokomikokomi
     admin-ttl: 7200000
     admin-token-name: token
+  alioss:
+    access-key-id: ${sy.alioss.access-key-id}
+    access-key-secret: ${sy.alioss.access-key-secret}
+    endpoint: ${sy.alioss.endpoint}
+    bucket-name: ${sy.alioss.bucket-name}
