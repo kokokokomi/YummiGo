@@ -18,7 +18,7 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("admin/category")
-@Tag(name = "api for category")
+@Tag(name = "Category api")
 public class CategoryController {
 
     @Autowired

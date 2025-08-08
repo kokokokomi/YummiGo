@@ -46,7 +46,9 @@ public class AddressBook implements Serializable {
     @Version
     private Integer version;
 
+
     private Date createTime;
+
 
     private Date updateTime;
 }

@@ -2,6 +2,7 @@ package com.sy.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import lombok.Data;
 
@@ -10,7 +11,7 @@ import lombok.Data;
  */
 @TableName(value ="order_detail")
 @Data
-public class OrderDetail {
+public class OrderDetail implements Serializable {
     @TableId
     private Long id;
 

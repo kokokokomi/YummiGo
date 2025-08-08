@@ -15,7 +15,7 @@ import lombok.Data;
 @TableName(value ="category")
 @Data
 @Builder
-public class Category implements Serializable {
+public class Category extends BaseEntity implements Serializable  {
     @TableId
     private Long id;
 
@@ -31,12 +31,4 @@ public class Category implements Serializable {
 
     @Version
     private Integer version;
-
-    private LocalDateTime createTime;
-
-    private LocalDateTime updateTime;
-
-    private Long createUser;
-
-    private Long updateUser;
 }
