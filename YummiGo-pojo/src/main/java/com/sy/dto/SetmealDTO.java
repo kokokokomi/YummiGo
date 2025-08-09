@@ -12,25 +12,16 @@ import com.sy.entity.SetmealDish;
 public class SetmealDTO implements Serializable {
 
     private Long id;
-
     //Classification id
     private Long categoryId;
-
     //set name
     private String name;
-
     //set price
     private BigDecimal price;
-
     //status
     private Integer status;
-
-
     private String description;
-
-
     private String image;
-
     //Relationship of set meal dishes
     private List<SetmealDish> setmealDishes = new ArrayList<>();
 

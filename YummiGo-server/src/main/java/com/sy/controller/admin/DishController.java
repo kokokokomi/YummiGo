@@ -91,5 +91,29 @@ public class DishController {
         dishService.updateDishWithFlavor(dishDTO);
         return Result.success();
     }
+    /**
+     * Query dishes by category ID/分類IDに基づいて料理を検索
+     */
+    @GetMapping("list")
+    @Operation(summary = "Query dish by id")
+    public Result<List<Dish>> dishList(Long categoryId){
+        log.info("query dish by id:{}", categoryId);
+        List<Dish> list=dishService.dishList(categoryId);
+        return Result.success(list);
+    }
+
+    /**
+     * activation/deactivation dish
+     * 料理の販売開始/停止
+     * @param status
+     * @param id
+     * @return
+     */
+    @PostMapping("status/{status}")
+    @Operation(summary = "active/deactivation dish")
+    public Result<String> startOrStopDish(@PathVariable Integer status,Long id){
+        dishService.startOrStopDish(status,id);
+        return Result.success();
+    }
 
 }

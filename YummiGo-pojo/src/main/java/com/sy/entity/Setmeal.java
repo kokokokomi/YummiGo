@@ -7,15 +7,19 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Date;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * @TableName setmeal
  */
-@TableName
+@TableName(value = "setmeal")
 @Data
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class Setmeal extends BaseEntity implements Serializable {
     @TableId
     private Long id;
