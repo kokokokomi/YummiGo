@@ -12,9 +12,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("admin/dish")
@@ -23,6 +26,9 @@ import java.util.List;
 public class DishController {
     @Autowired
     private DishService dishService;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     /**
      * Adding new dishes and their related flavor data/新規料理と関連する味覚データの追加
@@ -34,6 +40,8 @@ public class DishController {
     public Result addDishWithFlavor(@RequestBody DishDTO dishDTO) {
         log.info("insert new dish:{}", dishDTO);
         Result result=dishService.addDishWithFlavor(dishDTO);
+        String key="dish_"+dishDTO.getCategoryId();
+        cleanCache(key);
         return result;
     }
 
@@ -61,6 +69,8 @@ public class DishController {
     public Result deleteDish(@RequestParam List<Long> ids) {
         log.info("delete dish:{}", ids);
         dishService.deleteDish(ids);
+        //redis update
+        cleanCache("dish_*");
         return Result.success();
     }
 
@@ -89,31 +99,47 @@ public class DishController {
     public Result updateDishWithFlavor(@RequestBody DishDTO dishDTO){
         log.info("update dish:{}", dishDTO);
         dishService.updateDishWithFlavor(dishDTO);
+        cleanCache("dish_*");
         return Result.success();
     }
+
     /**
      * Query dishes by category ID/分類IDに基づいて料理を検索
      */
     @GetMapping("list")
     @Operation(summary = "Query dish by id")
-    public Result<List<Dish>> dishList(Long categoryId){
+    public Result<List<DishVO>> dishList(Long categoryId){
+        String key="dish_"+categoryId;
+        List<DishVO> list = (List<DishVO>) redisTemplate.opsForValue().get(key);
+        if(list!=null && list.size()>0){
+            return Result.success(list);
+        }
         log.info("query dish by id:{}", categoryId);
-        List<Dish> list=dishService.dishList(categoryId);
+        list=dishService.dishList(categoryId);
+        redisTemplate.opsForValue().set(key,list);
         return Result.success(list);
     }
 
     /**
      * activation/deactivation dish
      * 料理の販売開始/停止
-     * @param status
      * @param id
      * @return
      */
-    @PostMapping("status/{status}")
+    @PutMapping("status/{id}")
     @Operation(summary = "active/deactivation dish")
-    public Result<String> startOrStopDish(@PathVariable Integer status,Long id){
-        dishService.startOrStopDish(status,id);
+    public Result<String> startOrStopDish(@PathVariable Long id){
+        dishService.startOrStopDish(id);
+        cleanCache("dish_*");
         return Result.success();
+    }
+
+    /**
+     * delete redis cache
+     */
+    private void cleanCache(String pattern){
+        Set keys = redisTemplate.keys(pattern);
+        redisTemplate.delete(keys);
     }
 
 }

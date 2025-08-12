@@ -48,12 +48,13 @@ public class CategoryController {
     }
 
 
+
     /**
      *删除分类	Delete Category	カテゴリを削除する
      */
-    @DeleteMapping
+    @DeleteMapping("/{id}")
     @Operation(summary = "Delete category")
-    public Result<String> deleteById(Long id) {
+    public Result<String> deleteById(@PathVariable Long id) {
         log.info("delete category id:{}", id) ;
         categoryService.deleteById(id);
         return Result.success();
@@ -74,15 +75,14 @@ public class CategoryController {
 
     /**
      * 启用/禁用分类	Enable/Disable Category	カテゴリを有効化/無効化する
-     * @param status
      * @param id
      * @return
      */
 
-    @PostMapping("status/{status}")
+    @PutMapping("status/{id}")
     @Operation(summary = "Enable Disable category")
-    public Result<String> changeCategoryStatus(@PathVariable("status") Integer status,Long id) {
-        categoryService.changeCategoryStatus(status,id);
+    public Result<String> changeCategoryStatus(@PathVariable Long id) {
+        categoryService.changeCategoryStatus(id);
         return Result.success();
     }
 
@@ -96,6 +96,19 @@ public class CategoryController {
     public Result<List<Category>> listCategory(Integer type) {
         List<Category> list = categoryService.listCategory(type);
         return Result.success(list);
+    }
+
+    /**
+     * For data display (re-populating forms in edit views)
+     * データ表示用（編集画面などでのデータ再表示）
+     * @param id
+     * @return
+     */
+    @GetMapping("/{id}")
+    @Operation(summary = "select by id")
+    public Result<Category> getCategoryById(@PathVariable("id") Long id) {
+        Category byId = categoryService.getById(id);
+        return Result.success(byId);
     }
 
 }

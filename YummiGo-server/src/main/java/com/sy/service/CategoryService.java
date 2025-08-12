@@ -29,7 +29,7 @@ public interface CategoryService extends IService<Category> {
     void deleteById(Long id);
 
     //启用/禁用分类	Enable/Disable Category	カテゴリを有効化/無効化する
-    void changeCategoryStatus(Integer status, Long id);
+    void changeCategoryStatus(Long id);
 
     //根据类型查询分类	Query Categories by Type	タイプ別にカテゴリを検索する
     List<Category> listCategory(Integer type);

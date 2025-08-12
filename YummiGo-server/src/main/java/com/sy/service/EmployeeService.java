@@ -1,6 +1,7 @@
 package com.sy.service;
 
 import com.sy.dto.EmployeeDTO;
+import com.sy.dto.EmployeeFixPwdDTO;
 import com.sy.dto.EmployeeLoginDTO;
 import com.sy.dto.EmployeePageQueryDTO;
 import com.sy.entity.Employee;
@@ -24,8 +25,14 @@ public interface EmployeeService extends IService<Employee> {
     PageResult pageQuery(EmployeePageQueryDTO employeePageQueryDTO);
 
     //disable/enable account/従業員アカウントの状態を更新/启用禁用员工账号
-    Result updateStatus(Integer status, Long id);
+    Result updateStatus(Long id);
 
     //update employee information
     Result updateEmployee(EmployeeDTO employeeDTO);
+
+    //edit password
+    void updatePassword(EmployeeFixPwdDTO dto);
+
+    //delete employee by id
+    void deleteEmployee(Long id);
 }

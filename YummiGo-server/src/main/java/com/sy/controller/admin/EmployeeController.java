@@ -2,6 +2,7 @@ package com.sy.controller.admin;
 
 import com.sy.constant.JwtClaimsConstant;
 import com.sy.dto.EmployeeDTO;
+import com.sy.dto.EmployeeFixPwdDTO;
 import com.sy.dto.EmployeeLoginDTO;
 import com.sy.dto.EmployeePageQueryDTO;
 import com.sy.entity.Employee;
@@ -35,19 +36,20 @@ public class EmployeeController {
 
     @Autowired
     private JwtProperties jwtProperties;
-    @GetMapping("hello")
-    public void hello() {
-        System.out.println("hello");
-    }
 
+    /**
+     * Employee login
+     * @param employeeLoginDTO
+     * @return
+     */
     @PostMapping("login")
     @Operation(summary = "Employee login")
     public Result<EmployeeLoginVO> login(@RequestBody EmployeeLoginDTO employeeLoginDTO) {
         log.info("従業員ログイン：{}", employeeLoginDTO);
         Employee employee = employeeService.login(employeeLoginDTO);
-/*        if(employee == null) {
+        if(employee == null) {
             return Result.build(null, ResultCodeEnum.PASSWORD_ERROR);
-        }*/
+        }
 
         //ユーザーのログイン認証が成功した後、JWTトークンを発行します。
         Map<String, Object> claims = new HashMap<>();
@@ -63,6 +65,7 @@ public class EmployeeController {
                 .name(employee.getName())
                 .token(token)
                 .build();
+        log.info("jwt token:{}",token);
 
         return Result.success(employeeLoginVO);
 
@@ -74,6 +77,11 @@ public class EmployeeController {
         return Result.success(null);
     }
 
+    /**
+     * Add new employee
+     * @param employeeDTO
+     * @return
+     */
     @PostMapping
     @Operation(summary = "add employee")
     public Result addEmployee(@RequestBody EmployeeDTO employeeDTO){
@@ -97,18 +105,22 @@ public class EmployeeController {
 
     /**
      *disable/enable account/従業員アカウントの状態を更新/启用禁用员工账号
-     * @param status
      * @param id
      * @return
      */
-    @PostMapping("status/{status}")
+    @PostMapping("status/{id}")
     @Operation(summary = "disable/enable account")
-    public Result updateStatus(@PathVariable Integer status, Long id){
-        log.info("status:{},{}", status,id);
-        Result result=employeeService.updateStatus(status,id);
+    public Result updateStatus(@PathVariable Long id){
+        log.info("status:{},{}",id);
+        Result result=employeeService.updateStatus(id);
         return result;
     }
 
+    /**
+     * find employee by id
+     * @param id
+     * @return
+     */
     @GetMapping("/{id}")
     @Operation(summary = "find employee by id")
     public Result<Employee> getEmployeeById(@PathVariable Long id){
@@ -117,6 +129,12 @@ public class EmployeeController {
         employee.setPassword("*****");
         return Result.success(employee);
     }
+
+    /**
+     * edit employee information
+     * @param employeeDTO
+     * @return
+     */
     @PutMapping
     @Operation(summary = "edit employee")
     public Result updateEmployee(@RequestBody EmployeeDTO employeeDTO){
@@ -124,5 +142,32 @@ public class EmployeeController {
         Result result=employeeService.updateEmployee(employeeDTO);
         return result;
     }
+
+    /**
+     * Change Password/パスワード変更
+     * @param dto
+     * @return
+     */
+    @PutMapping("editPwd")
+    @Operation(summary = "Edit password")
+    public Result updatePassword(@RequestBody EmployeeFixPwdDTO dto){
+        log.info("updatePassword:{}", dto);
+        employeeService.updatePassword(dto);
+        return Result.success();
+    }
+
+    /**
+     * Delete employee
+     * @param id
+     * @return
+     */
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete employee")
+    public Result deleteEmployee(@PathVariable Long id){
+        log.info("deleteEmployee:{}", id);
+        employeeService.deleteEmployee(id);
+        return Result.success();
+    }
+
 
 }

@@ -142,10 +142,12 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal>
      * Can activate combos that are currently inactive 停止中のセットメニューを販売再開可能
      * Active combos are visible to users, inactive ones are hidden 販売中のセットはユーザー側に表示、停止中は非表示
      * Cannot activate if the combo contains any inactive dishes 販売再開時、セット内に停止中の料理が含まれる場合は再開不可
-     * @param status
+     *
      */
     @Override
-    public void startOrStopSet(Integer status,Long id) {
+    public void startOrStopSet(Long id) {
+        Setmeal setmeal = setmealMapper.selectById(id);
+        Integer status = setmeal.getStatus();
         if(status==StatusConstant.ENABLE){
             List<Dish> dishList=dishMapper.getBySetmealId(id);
             if(dishList!=null&&dishList.size()>0){
@@ -156,8 +158,7 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal>
                 });
             }
         }
-        Setmeal setmeal = setmealMapper.selectById(id);
-        setmeal.setStatus(status);
+        setmeal.setStatus(status==StatusConstant.DISABLE?StatusConstant.ENABLE:StatusConstant.DISABLE);
         setmealMapper.updateById(setmeal);
     }
 }
