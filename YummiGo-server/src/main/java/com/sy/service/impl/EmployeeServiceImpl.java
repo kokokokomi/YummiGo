@@ -7,6 +7,7 @@ import com.sy.annotation.AutoFill;
 import com.sy.constant.PasswordConstant;
 import com.sy.context.BaseContext;
 import com.sy.dto.EmployeeDTO;
+import com.sy.dto.EmployeeFixPwdDTO;
 import com.sy.dto.EmployeeLoginDTO;
 import com.sy.dto.EmployeePageQueryDTO;
 import com.sy.entity.Employee;
@@ -50,7 +51,6 @@ public class EmployeeServiceImpl extends ServiceImpl<EmployeeMapper, Employee>
         queryWrapper.eq(Employee::getUsername, username);
 
         Employee employee = employeeMapper.selectOne(queryWrapper);
-
 
         if (employee == null) {
             throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
@@ -105,19 +105,16 @@ public class EmployeeServiceImpl extends ServiceImpl<EmployeeMapper, Employee>
 
     /**
      *disable/enable account/従業員アカウントの状態を更新/启用禁用员工账号
-     * @param status
      * @param id
      * @return
      */
     @Override
 //    @AutoFill(value = OperationType.UPDATE)
-    public Result updateStatus(Integer status, Long id) {
+    public Result updateStatus(Long id) {
         Employee employee = employeeMapper.selectById(id);
 
-        employee.setStatus(employee.getStatus() == 1 ? 0 : 1);
+        employee.setStatus(employee.getStatus() == StatusConstant.DISABLE?StatusConstant.ENABLE:StatusConstant.DISABLE);
 
-//        employee.setUpdateTime(LocalDateTime.now());
-//        employee.setUpdateUser(BaseContext.getCurrentId());
         employeeMapper.updateById(employee);
         return Result.success();
     }
@@ -131,6 +128,34 @@ public class EmployeeServiceImpl extends ServiceImpl<EmployeeMapper, Employee>
 //        employee.setUpdateUser(BaseContext.getCurrentId());
         employeeMapper.updateById(employee);
         return Result.success();
+    }
+
+    /**
+     *Change Password - Verify if entered old password matches original password
+     * パスワード変更 - 入力された旧パスワードが元のパスワードと一致するか検証
+     * @param dto
+     */
+    @Override
+    public void updatePassword(EmployeeFixPwdDTO dto) {
+        String oldPwd = DigestUtils.md5DigestAsHex(dto.getOldPwd().getBytes());
+        Long id = BaseContext.getCurrentId();
+        Employee employee = employeeMapper.selectById(id);
+        String password = employee.getPassword();
+        if(!oldPwd.equals(password)){
+            throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
+        }
+        String newPwd = DigestUtils.md5DigestAsHex(dto.getNewPwd().getBytes());
+        employee.setPassword(newPwd);
+        employeeMapper.updateById(employee);
+    }
+
+    /**
+     * delete employee by id
+     * @param id
+     */
+    @Override
+    public void deleteEmployee(Long id) {
+        employeeMapper.deleteById(id);
     }
 
 }

@@ -32,5 +32,5 @@ public interface SetmealService extends IService<Setmeal> {
     void updateSetmeal(SetmealDTO setmealDTO);
 
     //activation/deactivation/セットメニューの販売開始/停止
-    void startOrStopSet(Integer status, Long id);
+    void startOrStopSet(Long id);
 }

@@ -34,8 +34,8 @@ public interface DishService extends IService<Dish> {
     void updateDishWithFlavor(DishDTO dishDTO);
 
      // Query dishes by category ID/分類IDに基づいて料理を検索
-    List<Dish> dishList(Long categoryId);
+    List<DishVO> dishList(Long categoryId);
 
     //  activation/deactivation dish 料理の販売開始/停止
-    void startOrStopDish(Integer status, Long id);
+    void startOrStopDish(Long id);
 }

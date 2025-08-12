@@ -24,10 +24,18 @@ public class Knife4jConfig {
     }
 
     @Bean
-    public GroupedOpenApi ygApi() {
+    public GroupedOpenApi ygApiAdmin() {
         return GroupedOpenApi.builder()
-                .group("API")
-                .packagesToScan("com.sy.controller")
+                .group("Admin API")
+                .packagesToScan("com.sy.controller.admin")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi ygApiUser() {
+        return GroupedOpenApi.builder()
+                .group("User API")
+                .packagesToScan("com.sy.controller.user")
                 .build();
     }
 }

@@ -113,14 +113,11 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category>
     //启用/禁用分类	Enable/Disable Category	カテゴリを有効化/無効化する
     @Override
 //    @AutoFill(OperationType.UPDATE)
-    public void changeCategoryStatus(Integer status, Long id) {
-        Category category = Category.builder()
-                .id(id)
-                .status(status)
-//                .updateTime(LocalDateTime.now())
-//                .updateUser(BaseContext.getCurrentId())
-                .build();
-        categoryMapper.updateById(category);
+    public void changeCategoryStatus(Long id) {
+        Category cat = categoryMapper.selectById(id);
+        Integer status = cat.getStatus();
+        cat.setStatus(status==StatusConstant.ENABLE?StatusConstant.DISABLE:StatusConstant.DISABLE);
+        categoryMapper.updateById(cat);
     }
 
 //根据类型查询分类	Query Categories by Type	タイプ別にカテゴリを検索する

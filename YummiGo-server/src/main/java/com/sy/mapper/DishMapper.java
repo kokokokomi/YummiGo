@@ -21,6 +21,9 @@ public interface DishMapper extends BaseMapper<Dish> {
 
     //get dishes by setmeal id
     List<Dish> getBySetmealId(Long id);
+
+    //get dishvowithflavorbycatageory
+    List<DishVO> selectDishWithFlavorByCategory(Long categoryId);
 }
 
 

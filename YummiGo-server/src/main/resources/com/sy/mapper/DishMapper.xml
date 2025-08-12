@@ -63,4 +63,14 @@
             WHERE setmeal_id = #{id}
         )
     </select>
+    <select id="selectDishWithFlavorByCategory" resultType="com.sy.vo.DishVO">
+        SELECT
+            d.*,
+            f.*
+        FROM dish d
+                 LEFT JOIN dish_flavor f ON d.id = f.dish_id AND f.is_deleted = 0
+        WHERE d.category_id = #{categoryId}
+          AND d.status = 1
+          AND d.is_deleted = 0
+    </select>
 </mapper>

@@ -93,16 +93,16 @@ public class SetmealController {
 
     /**
      * activation/deactivation/セットメニューの販売開始/停止
-     * @param status
      * @param id setmeal id
      * @return
      */
-    @PostMapping("status/{status}")
+    @PostMapping("status/{id}")
     @Operation(summary = "active/deactivation setmeal")
-    public Result startOrStopSet(@PathVariable Integer status,Long id){
-        setmealService.startOrStopSet(status,id);
+    public Result startOrStopSet(@PathVariable Long id){
+        setmealService.startOrStopSet(id);
         return Result.success();
     }
+
 
 
 }

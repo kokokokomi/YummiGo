@@ -23,7 +23,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -195,28 +197,47 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish>
      * @return
      */
     @Override
-    public List<Dish> dishList(Long categoryId) {
-        return dishMapper.selectList(
+    public List<DishVO> dishList(Long categoryId) {
+        List<Dish> dishList = dishMapper.selectList(
                 new LambdaQueryWrapper<Dish>()
                         .eq(Dish::getCategoryId, categoryId)
                         .eq(Dish::getStatus, StatusConstant.ENABLE)
         );
+        List<Long> dishIds = dishList.stream()
+                .map(Dish::getId)
+                .collect(Collectors.toList());
+        List<DishFlavor> allFlavors = dishFlavorMapper.selectList(
+                new LambdaQueryWrapper<DishFlavor>()
+                        .in(DishFlavor::getDishId, dishIds)
+                        .eq(DishFlavor::getIsDeleted, 0)
+        );
+        Map<Long, List<DishFlavor>> flavorMap = allFlavors.stream()
+                .collect(Collectors.groupingBy(DishFlavor::getDishId));
+        List<DishVO> dishDTOList = dishList.stream().map(dish -> {
+            DishVO dishVO = new DishVO();
+            BeanUtils.copyProperties(dish, dishVO);
+            // 设置口味信息，如果没有口味则为空列表
+            dishVO.setFlavors(flavorMap.getOrDefault(dish.getId(), new ArrayList<>()));
+            return dishVO;
+        }).collect(Collectors.toList());
+
+        return dishDTOList;
     }
 
     /**
      * activation/deactivation dish 料理の販売開始/停止:
      * For deactivation operations: must also deactivate any combos containing this dish
      * 販売停止操作の場合、当該料理を含むセットメニューも同時に停止する必要あり
-     * @param status
      * @param id
      */
     @Override
     @Transactional
-    public void startOrStopDish(Integer status, Long id) {
+    public void startOrStopDish(Long id) {
         Dish dish=dishMapper.selectById(id);
-        dish.setStatus(status);
+        Integer status = dish.getStatus();
+        dish.setStatus((status==StatusConstant.DISABLE)?StatusConstant.ENABLE:StatusConstant.DISABLE);
         dishMapper.updateById(dish);
-        if(status==StatusConstant.DISABLE){
+        if(status==StatusConstant.ENABLE){
             List<Long> setmealIds = setmealDishMapper.getSetmealIdsByDishId(id);
             if(setmealIds!=null && setmealIds.size()>0){
                 for(Long setmealId:setmealIds){

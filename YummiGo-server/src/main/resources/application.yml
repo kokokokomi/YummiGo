@@ -23,6 +23,11 @@ spring:
       url: jdbc:mysql://${sy.datasource.host}:${sy.datasource.port}/${sy.datasource.database}?serverTimezone=Asia/Tokyo&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
       username: ${sy.datasource.username}
       password: ${sy.datasource.password}
+  data:
+    redis:
+      host: ${sy.redis.host}
+      port: ${sy.redis.port}
+
 
 server:
   port: 8080
@@ -31,7 +36,7 @@ sy:
   jwt:
     admin-secret-key: kokomikokomikokomikokomikokomikokomi
     admin-ttl: 7200000
-    admin-token-name: token
+    admin-token-name: Authorization
   alioss:
     access-key-id: ${sy.alioss.access-key-id}
     access-key-secret: ${sy.alioss.access-key-secret}
