@@ -17,6 +17,7 @@ import com.sy.mapper.SetmealDishMapper;
 import com.sy.result.PageResult;
 import com.sy.service.SetmealService;
 import com.sy.mapper.SetmealMapper;
+import com.sy.vo.DishItemVO;
 import com.sy.vo.SetmealVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -160,6 +161,17 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal>
         }
         setmeal.setStatus(status==StatusConstant.DISABLE?StatusConstant.ENABLE:StatusConstant.DISABLE);
         setmealMapper.updateById(setmeal);
+    }
+
+    /**
+     * query dishitem by setmeal id
+     * @param id
+     * @return
+     */
+    @Override
+    public List<DishItemVO> getDishItemById(Long id) {
+        List<DishItemVO> list=setmealMapper.getDishItemById(id);
+        return list;
     }
 }
 
