@@ -5,6 +5,7 @@ import com.sy.dto.SetmealPageQueryDTO;
 import com.sy.entity.Setmeal;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.sy.result.PageResult;
+import com.sy.vo.DishItemVO;
 import com.sy.vo.SetmealVO;
 
 import java.util.List;
@@ -33,4 +34,7 @@ public interface SetmealService extends IService<Setmeal> {
 
     //activation/deactivation/セットメニューの販売開始/停止
     void startOrStopSet(Long id);
+
+    //query dish list by setmeal id
+    List<DishItemVO> getDishItemById(Long id);
 }

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sy.dto.SetmealPageQueryDTO;
 import com.sy.entity.Setmeal;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.sy.vo.DishItemVO;
 import com.sy.vo.SetmealVO;
 
 import java.util.List;
@@ -18,6 +19,9 @@ public interface SetmealMapper extends BaseMapper<Setmeal> {
 
     // paginated query for combo meals/セットメニューのページネーション検索
     List<SetmealVO> pageQuerySetmealVO(Page<SetmealVO> page, SetmealPageQueryDTO dto);
+
+    //query dish item by setmeal id
+    List<DishItemVO> getDishItemById(Long setmealId);
 }
 
 

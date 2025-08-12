@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,6 +33,7 @@ public class SetmealController {
      */
     @PostMapping
     @Operation(summary = "Add combo meal")
+    @CacheEvict(cacheNames = "setmealCache",key = "#setmealDTO.categoryId")
     public Result addSetmeal(@RequestBody SetmealDTO setmealDTO) {
         setmealService.addSetmeal(setmealDTO);
         return Result.success();
@@ -58,6 +61,7 @@ public class SetmealController {
      */
     @DeleteMapping
     @Operation(summary = "Delete setMeal")
+    @CacheEvict(cacheNames = "setmealCache",allEntries = true)
     public Result deleteSetmeal(@RequestParam List<Long> ids) {
         log.info("deleteSetmeal: {}", ids);
         setmealService.deleteSetmeal(ids);
@@ -86,6 +90,7 @@ public class SetmealController {
      */
     @PutMapping
     @Operation(summary = "Update setmeal")
+    @CacheEvict(cacheNames = "setmealCache",allEntries = true)
     public Result updateSetmeal(@RequestBody SetmealDTO setmealDTO){
         setmealService.updateSetmeal(setmealDTO);
         return Result.success();
@@ -98,6 +103,7 @@ public class SetmealController {
      */
     @PostMapping("status/{id}")
     @Operation(summary = "active/deactivation setmeal")
+    @CacheEvict(cacheNames = "setmealCache",allEntries = true)
     public Result startOrStopSet(@PathVariable Long id){
         setmealService.startOrStopSet(id);
         return Result.success();
