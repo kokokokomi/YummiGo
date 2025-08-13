@@ -24,4 +24,25 @@
         dish_flavor,number,amount,create_time,is_deleted,
         version
     </sql>
+    <update id="updateNumberById">
+        UPDATE shopping_cart SET number =#{number}
+        WHERE id=#{id}
+    </update>
+    <select id="list" resultType="com.sy.entity.ShoppingCart">
+        SELECT * FROM shopping_cart
+        <where>
+            <if test="userId !=null">
+                and user_id=#{userId}
+            </if>
+            <if test="setmealId !=null">
+                and setmeal_id=#{setmealId}
+            </if>
+            <if test="dishId !=null">
+                and dish_id=#{dishId}
+            </if>
+            <if test="dishFlavor !=null">
+                and dish_flavor=#{dishFlavor}
+            </if>
+        </where>
+    </select>
 </mapper>
