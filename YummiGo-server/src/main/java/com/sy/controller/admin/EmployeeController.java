@@ -108,10 +108,10 @@ public class EmployeeController {
      * @param id
      * @return
      */
-    @PostMapping("status/{id}")
+    @PutMapping("status/{id}")
     @Operation(summary = "disable/enable account")
     public Result updateStatus(@PathVariable Long id){
-        log.info("status:{},{}",id);
+        log.info("status:{}",id);
         Result result=employeeService.updateStatus(id);
         return result;
     }

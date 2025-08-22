@@ -14,4 +14,7 @@ public interface ShoppingCartService extends IService<ShoppingCart> {
 
     //Add new shopping cart
     void addShoppingCart(ShoppingCartDTO shoppingCartDTO);
+
+    //    Remove an item from the shopping cart / ショッピングカートから商品を削除する
+    void subShoppingCart(ShoppingCartDTO shoppingCartDTO);
 }

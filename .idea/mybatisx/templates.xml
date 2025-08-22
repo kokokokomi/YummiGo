@@ -67,44 +67,16 @@
             <option name="tableUIInfoList">
               <list>
                 <TableUIInfo>
-                  <option name="className" value="Setmeal" />
-                  <option name="tableName" value="setmeal" />
+                  <option name="className" value="Orders" />
+                  <option name="tableName" value="orders" />
                 </TableUIInfo>
                 <TableUIInfo>
-                  <option name="className" value="Dish" />
-                  <option name="tableName" value="dish" />
-                </TableUIInfo>
-                <TableUIInfo>
-                  <option name="className" value="AddressBook" />
-                  <option name="tableName" value="address_book" />
-                </TableUIInfo>
-                <TableUIInfo>
-                  <option name="className" value="SetmealDish" />
-                  <option name="tableName" value="setmeal_dish" />
-                </TableUIInfo>
-                <TableUIInfo>
-                  <option name="className" value="DishFlavor" />
-                  <option name="tableName" value="dish_flavor" />
-                </TableUIInfo>
-                <TableUIInfo>
-                  <option name="className" value="ShoppingCart" />
-                  <option name="tableName" value="shopping_cart" />
-                </TableUIInfo>
-                <TableUIInfo>
-                  <option name="className" value="Category" />
-                  <option name="tableName" value="category" />
-                </TableUIInfo>
-                <TableUIInfo>
-                  <option name="className" value="Employee" />
-                  <option name="tableName" value="employee" />
+                  <option name="className" value="User" />
+                  <option name="tableName" value="user" />
                 </TableUIInfo>
                 <TableUIInfo>
                   <option name="className" value="OrderDetail" />
                   <option name="tableName" value="order_detail" />
-                </TableUIInfo>
-                <TableUIInfo>
-                  <option name="className" value="Orders" />
-                  <option name="tableName" value="orders" />
                 </TableUIInfo>
               </list>
             </option>

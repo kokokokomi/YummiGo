@@ -10,4 +10,9 @@ import com.baomidou.mybatisplus.extension.service.IService;
 */
 public interface AddressBookService extends IService<AddressBook> {
 
+    //Set default address  デフォルト住所を設定
+    void setDefault(AddressBook addressBook);
+
+    //Update address by ID  / IDで住所を更新
+    void updateAddress(AddressBook addressBook);
 }

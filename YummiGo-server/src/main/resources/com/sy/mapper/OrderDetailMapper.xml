@@ -6,20 +6,20 @@
 
     <resultMap id="BaseResultMap" type="com.sy.entity.OrderDetail">
             <id property="id" column="id" />
-            <result property="name" column="name" />
-            <result property="image" column="image" />
+            <result property="snapshotName" column="snapshot_name" />
+            <result property="snapshotImage" column="snapshot_image" />
             <result property="orderId" column="order_id" />
             <result property="dishId" column="dish_id" />
             <result property="setmealId" column="setmeal_id" />
             <result property="dishFlavor" column="dish_flavor" />
             <result property="number" column="number" />
-            <result property="amount" column="amount" />
+            <result property="unitPrice" column="unit_price" />
             <result property="isDeleted" column="is_deleted" />
             <result property="version" column="version" />
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,name,image,order_id,dish_id,setmeal_id,
-        dish_flavor,number,amount,is_deleted,version
+        id,snapshot_name,snapshot_image,order_id,dish_id,setmeal_id,
+        dish_flavor,number,unit_price,is_deleted,version
     </sql>
 </mapper>

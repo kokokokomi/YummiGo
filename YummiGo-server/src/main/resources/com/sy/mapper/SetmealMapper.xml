@@ -31,13 +31,13 @@
         LEFT JOIN category c
         ON s.category_id=c.id
         <where>
-            <if test="name!=null">
+            <if test="dto.name!=null">
                 AND s.name LIKE CONCAT('%', #{dto.name}, '%')
             </if>
-            <if test="status@=null">
+            <if test="dto.status!=null">
                 AND s.status=#{dto.status}
             </if>
-            <if test="categoryId != null">
+            <if test="dto.categoryId != null">
                 and s.category_id = #{dto.categoryId}
             </if>
         </where>

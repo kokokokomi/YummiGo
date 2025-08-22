@@ -25,16 +25,16 @@ public class SetmealController {
 
     /**
      * Query setmeal by categoryid
-     * @param categoryid
+     * @param categoryId
      * @return
      */
     @GetMapping("list")
     @Operation(summary = "Query setmeal by categoryid")
     @Cacheable(cacheNames = "setmealCache",key = "#categoryId")
-    public Result<List<Setmeal>> list(@RequestParam Long categoryid) {
+    public Result<List<Setmeal>> list(@RequestParam Long categoryId) {
         List<Setmeal> list = setmealService.list(
                 new LambdaQueryWrapper<Setmeal>()
-                        .eq(Setmeal::getCategoryId, categoryid)
+                        .eq(Setmeal::getCategoryId, categoryId)
                         .eq(Setmeal::getStatus, StatusConstant.ENABLE)
         );
         return Result.success(list);

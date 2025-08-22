@@ -11,7 +11,7 @@ import lombok.Data;
  */
 @TableName(value ="address_book")
 @Data
-public class AddressBook implements Serializable {
+public class AddressBook extends BaseEntity implements Serializable {
     @TableId
     private Long id;
 
@@ -46,9 +46,4 @@ public class AddressBook implements Serializable {
     @Version
     private Integer version;
 
-
-    private Date createTime;
-
-
-    private Date updateTime;
 }

@@ -6,13 +6,20 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Date;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * @TableName shopping_cart
  */
 @TableName(value ="shopping_cart")
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class ShoppingCart implements Serializable {
     @TableId
     private Long id;

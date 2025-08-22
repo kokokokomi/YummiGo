@@ -32,15 +32,28 @@ public class JwtTokenAdminInterceptor implements HandlerInterceptor {
         }
 
         // 1. リクエストヘッダーからトークンを取得
-        String token = request.getHeader(jwtProperties.getAdminTokenName());
+        String authHeader = request.getHeader(jwtProperties.getAdminTokenName());
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            response.setStatus(401);
+            return false;
+        }
+        String token = authHeader.substring(7);
 
         // 2. トークンの検証
         try {
             log.info("JWT検証中:{}", token);
-            Claims claims = JwtUtil.parseJWT(jwtProperties.getAdminSecretKey(), token);
-            Long empId = Long.valueOf(claims.get(JwtClaimsConstant.EMP_ID).toString());
-            log.info("現在の従業員ID：", empId);
-            BaseContext.setCurrentId(empId);
+            String secretKey = request.getRequestURI().startsWith("/admin")
+                    ? jwtProperties.getAdminSecretKey()
+                    : jwtProperties.getUserSecretKey();
+            Claims claims = JwtUtil.parseJWT(secretKey, token);
+            String idKey = request.getRequestURI().startsWith("/admin")
+                    ? JwtClaimsConstant.EMP_ID
+                    : JwtClaimsConstant.USER_ID;
+
+            Long id = Long.valueOf(claims.get(idKey).toString());
+
+            log.info("現在のID：{}", id);
+            BaseContext.setCurrentId(id);
             // 3. 検証成功、通過を許可
             return true;
         } catch (Exception ex) {

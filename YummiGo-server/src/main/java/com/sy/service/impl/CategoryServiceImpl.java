@@ -116,7 +116,7 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category>
     public void changeCategoryStatus(Long id) {
         Category cat = categoryMapper.selectById(id);
         Integer status = cat.getStatus();
-        cat.setStatus(status==StatusConstant.ENABLE?StatusConstant.DISABLE:StatusConstant.DISABLE);
+        cat.setStatus(status==StatusConstant.ENABLE?StatusConstant.DISABLE:StatusConstant.ENABLE);
         categoryMapper.updateById(cat);
     }
 

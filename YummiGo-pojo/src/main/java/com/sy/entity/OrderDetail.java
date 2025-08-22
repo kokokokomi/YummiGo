@@ -1,23 +1,32 @@
 package com.sy.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
-
-import java.io.Serializable;
-import java.math.BigDecimal;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
 
 /**
  * @TableName order_detail
  */
 @TableName(value ="order_detail")
 @Data
-public class OrderDetail implements Serializable {
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class OrderDetail {
+    private static final long serialVersionUID = 1L;
+
     @TableId
     private Long id;
 
-    private String name;
+    private String snapshotName;
 
-    private String image;
+    private String snapshotImage;
 
     private Long orderId;
 
@@ -29,7 +38,7 @@ public class OrderDetail implements Serializable {
 
     private Integer number;
 
-    private BigDecimal amount;
+    private BigDecimal unitPrice;
 
     private Integer isDeleted;
 

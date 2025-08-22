@@ -1,18 +1,43 @@
 package com.sy.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Date;
-import lombok.Data;
 
 /**
  * @TableName orders
  */
 @TableName(value ="orders")
 @Data
-public class Orders {
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class Orders implements Serializable {
+    /**
+     * status
+     */
+    public static final Integer PENDING_PAYMENT = 1;
+    public static final Integer TO_BE_CONFIRMED = 2;
+    public static final Integer CONFIRMED = 3;
+    public static final Integer DELIVERY_IN_PROGRESS = 4;
+    public static final Integer COMPLETED = 5;
+    public static final Integer CANCELLED = 6;
+    /**
+     * pay status
+     */
+    public static final Integer UN_PAID = 0;
+    public static final Integer PAID = 1;
+    public static final Integer REFUND = 2;
+
+    private static final long serialVersionUID = 1L;
+
     @TableId
     private Long id;
 
@@ -24,25 +49,27 @@ public class Orders {
 
     private Long addressBookId;
 
-    private Date orderTime;
+    private LocalDateTime orderTime;
 
-    private Date checkoutTime;
+    private LocalDateTime checkoutTime;
 
     private Integer payMethod;
+
+    private String stripePaymentIntentId;
+
+    private String stripeSessionId;
 
     private Integer payStatus;
 
     private BigDecimal amount;
 
-    private String remark;
+    private String snapshotPhone;
 
-    private String phone;
+    private String snapshotAddress;
 
-    private String address;
+    private String snapshotUserName;
 
-    private String userName;
-
-    private String consignee;
+    private String snapshotConsignee;
 
     private String cancelReason;
 
@@ -62,8 +89,22 @@ public class Orders {
 
     private Integer tablewareStatus;
 
+    private Integer totalItems;
+
+    private String summary;
+
+    private String firstItemName;
+
+    private String firstItemImage;
+
     private Integer isDeleted;
 
     @Version
     private Integer version;
+
+    @TableField(fill = FieldFill.INSERT)
+    private LocalDateTime createTime;
+
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updateTime;
 }
