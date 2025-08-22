@@ -13,13 +13,14 @@
             <result property="orderTime" column="order_time" />
             <result property="checkoutTime" column="checkout_time" />
             <result property="payMethod" column="pay_method" />
+            <result property="stripePaymentIntentId" column="stripe_payment_intent_id" />
+            <result property="stripeSessionId" column="stripe_session_id" />
             <result property="payStatus" column="pay_status" />
             <result property="amount" column="amount" />
-            <result property="remark" column="remark" />
-            <result property="phone" column="phone" />
-            <result property="address" column="address" />
-            <result property="userName" column="user_name" />
-            <result property="consignee" column="consignee" />
+            <result property="snapshotPhone" column="snapshot_phone" />
+            <result property="snapshotAddress" column="snapshot_address" />
+            <result property="snapshotUserName" column="snapshot_user_name" />
+            <result property="snapshotConsignee" column="snapshot_consignee" />
             <result property="cancelReason" column="cancel_reason" />
             <result property="rejectionReason" column="rejection_reason" />
             <result property="cancelTime" column="cancel_time" />
@@ -29,15 +30,23 @@
             <result property="packAmount" column="pack_amount" />
             <result property="tablewareNumber" column="tableware_number" />
             <result property="tablewareStatus" column="tableware_status" />
+            <result property="totalItems" column="total_items" />
+            <result property="summary" column="summary" />
+            <result property="firstItemName" column="first_item_name" />
+            <result property="firstItemImage" column="first_item_image" />
             <result property="isDeleted" column="is_deleted" />
             <result property="version" column="version" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+
     </resultMap>
 
     <sql id="Base_Column_List">
         id,number,status,user_id,address_book_id,order_time,
-        checkout_time,pay_method,pay_status,amount,remark,
-        phone,address,user_name,consignee,cancel_reason,
-        rejection_reason,cancel_time,estimated_delivery_time,delivery_status,delivery_time,
-        pack_amount,tableware_number,tableware_status,is_deleted,version
+        checkout_time,pay_method,stripe_payment_intent_id,stripe_session_id,pay_status,
+        amount,snapshot_phone,snapshot_address,snapshot_user_name,snapshot_consignee,
+        cancel_reason,rejection_reason,cancel_time,estimated_delivery_time,delivery_status,
+        delivery_time,pack_amount,tableware_number,tableware_status,total_items,
+        summary,first_item_name,first_item_image,is_deleted,version
     </sql>
 </mapper>

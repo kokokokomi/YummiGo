@@ -67,4 +67,18 @@ public class ShoppingCartController {
         );
         return Result.success();
     }
+
+    /**
+     * Remove an item from the shopping cart
+     * ショッピングカートから商品を削除する
+     * @param shoppingCartDTO
+     * @return
+     */
+    @PostMapping("sub")
+    @Operation(summary = "Remove an item from shoppingcart")
+    public Result sub(@RequestBody ShoppingCartDTO shoppingCartDTO){
+        log.info("shoppingCartDTO: {}", shoppingCartDTO);
+        shoppingCartService.subShoppingCart(shoppingCartDTO);
+        return Result.success();
+    }
 }

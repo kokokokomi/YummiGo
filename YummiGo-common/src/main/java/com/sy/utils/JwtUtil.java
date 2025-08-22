@@ -6,18 +6,21 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 
 import java.nio.charset.StandardCharsets;
+import java.security.Key;
+import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
-import java.util.Map;
 
+
+@Slf4j
 public class JwtUtil {
+
 
     /**
      * Generate a JWT token using HS256 algorithm and a symmetric secret key.
@@ -63,5 +66,45 @@ public class JwtUtil {
                 .parseSignedClaims(token)         // Parse and validate token
                 .getPayload();                    // Extract claims
     }
+
+    public Instant getExpirationInstant(String secretKey, String token) {
+        try {
+            SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+
+            // Jwts.parser()...getExpiration() 返回的是 java.util.Date
+            Date expirationDate = Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .getExpiration();
+
+            // 将 java.util.Date 转换为 java.time.Instant
+            return expirationDate.toInstant();
+
+        } catch (Exception e) {
+            log.warn("JWT wrong: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    //Validate token authenticity
+    public boolean isExpiration(String secretKey,String token) {
+        try {
+            SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+
+            Date expiration = Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .getExpiration();
+
+            return expiration.before(new Date());
+        } catch (Exception e) {
+            return true; // token not valid
+        }
+    }
+
 }
 

@@ -101,7 +101,7 @@ public class SetmealController {
      * @param id setmeal id
      * @return
      */
-    @PostMapping("status/{id}")
+    @PutMapping("status/{id}")
     @Operation(summary = "active/deactivation setmeal")
     @CacheEvict(cacheNames = "setmealCache",allEntries = true)
     public Result startOrStopSet(@PathVariable Long id){

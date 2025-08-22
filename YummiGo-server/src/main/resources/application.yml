@@ -31,12 +31,16 @@ spring:
 
 server:
   port: 8080
+  address: 0.0.0.0
 
 sy:
   jwt:
     admin-secret-key: kokomikokomikokomikokomikokomikokomi
     admin-ttl: 7200000
     admin-token-name: Authorization
+    user-secret-key: kokomikokomikokomikokomisysysysysyorz
+    user-ttl: 10000000
+    user-token-name: Authorization
   alioss:
     access-key-id: ${sy.alioss.access-key-id}
     access-key-secret: ${sy.alioss.access-key-secret}

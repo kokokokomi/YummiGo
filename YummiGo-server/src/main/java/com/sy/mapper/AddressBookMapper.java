@@ -11,6 +11,11 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 */
 public interface AddressBookMapper extends BaseMapper<AddressBook> {
 
+    //Set default address based on user ID ユーザーIDに基づいてデフォルト住所を設定
+    void updateIsDefaultByUserId(AddressBook addressBook);
+
+    //Update address by ID  / IDで住所を更新
+    void updateAddress(AddressBook addressBook);
 }
 
 

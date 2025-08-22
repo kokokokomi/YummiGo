@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 /**
 * @author kokomi
 * @description 针对表【order_detail(注文明細表)】的数据库操作Service实现
-* @createDate 2025-08-06 22:25:11
+* @createDate 2025-08-15 18:03:00
 */
 @Service
 public class OrderDetailServiceImpl extends ServiceImpl<OrderDetailMapper, OrderDetail>
