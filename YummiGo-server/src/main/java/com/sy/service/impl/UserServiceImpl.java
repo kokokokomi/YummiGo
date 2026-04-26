@@ -2,6 +2,7 @@ package com.sy.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.sy.constant.DeleteConstant;
 import com.sy.constant.MessageConstant;
 import com.sy.context.BaseContext;
 import com.sy.dto.UserLoginDTO;
@@ -77,7 +78,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Override
     public void updateInfo(UserUpdateDTO userUpdateDTO) {
         Long currentId = BaseContext.getCurrentId();
-
+        User user = userMapper.selectOne(
+                new LambdaQueryWrapper<User>()
+                        .eq(User::getId, currentId)
+                        .eq(User::getIsDeleted, DeleteConstant.NOT_DELETED)
+        );
+        user.setAvatar(userUpdateDTO.getAvatar());
+        user.setName(userUpdateDTO.getName());
+        userMapper.updateById(user);
     }
 }
 

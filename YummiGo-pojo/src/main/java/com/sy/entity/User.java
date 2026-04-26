@@ -18,7 +18,7 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class User implements Serializable {
+public class User extends UpdateEntity implements Serializable {
     @TableId
     private Long id;
 
@@ -33,12 +33,6 @@ public class User implements Serializable {
     private Integer emailVerified;
 
     private Date lastLoginTime;
-
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updateTime;
 
     private String oauthProvider;
 

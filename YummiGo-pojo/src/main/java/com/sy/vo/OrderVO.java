@@ -17,6 +17,7 @@ public class OrderVO extends Orders implements Serializable {
     // 注文商品情報
     private String orderDishes;
 
+
     // 注文詳細情報
     private List<OrderDetail> orderDetailList;
 

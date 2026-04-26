@@ -32,4 +32,13 @@ public class DishController {
         List<DishVO> list = dishService.dishList(categoryId);
         return Result.success(list);
     }
+
+    @GetMapping("getDishWithFlavor")
+    @Operation(summary = "Query dish with its releated dish flavor by id")
+    public Result<DishVO> getDishWithFlavor(Long dishId) {
+        log.info("query dish with flavour:{}", dishId);
+        DishVO result=dishService.queryDishWithFlavor(dishId);
+        return Result.success(result);
+    }
+
 }

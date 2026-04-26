@@ -25,11 +25,11 @@ public class AddressBookServiceImpl extends ServiceImpl<AddressBookMapper, Addre
      */
     @Override
     public void setDefault(AddressBook addressBook) {
-        addressBook.setIsDefault(0);
+        addressBook.setIsDefault(false);
         addressBook.setUserId(BaseContext.getCurrentId());
         addressBookMapper.updateIsDefaultByUserId(addressBook);
 
-        addressBook.setIsDefault(1);
+        addressBook.setIsDefault(true);
         addressBookMapper.updateById(addressBook);
     }
 
@@ -39,7 +39,7 @@ public class AddressBookServiceImpl extends ServiceImpl<AddressBookMapper, Addre
      */
     @Override
     public void updateAddress(AddressBook addressBook) {
-        addressBookMapper.updateAddress(addressBook);
+        addressBookMapper.updateById(addressBook);
     }
 }
 

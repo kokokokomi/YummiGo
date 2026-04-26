@@ -19,7 +19,7 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Orders implements Serializable {
+public class Orders extends UpdateEntity implements Serializable {
     /**
      * status
      */
@@ -38,7 +38,7 @@ public class Orders implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @TableId
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     private String number;
@@ -49,6 +49,9 @@ public class Orders implements Serializable {
 
     private Long addressBookId;
 
+    private String remark;
+
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime orderTime;
 
     private LocalDateTime checkoutTime;
@@ -102,9 +105,4 @@ public class Orders implements Serializable {
     @Version
     private Integer version;
 
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updateTime;
 }

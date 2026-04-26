@@ -3,6 +3,7 @@ package com.sy.entity;
 import com.baomidou.mybatisplus.annotation.*;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.Date;
 import lombok.Data;
 
@@ -11,7 +12,7 @@ import lombok.Data;
  */
 @TableName(value ="address_book")
 @Data
-public class AddressBook extends BaseEntity implements Serializable {
+public class AddressBook extends UpdateEntity implements Serializable {
     @TableId
     private Long id;
 
@@ -39,7 +40,9 @@ public class AddressBook extends BaseEntity implements Serializable {
 
     private String label;
 
-    private Integer isDefault;
+    private Boolean isDefault;
+
+    private String fullAddress;
 
     private Integer isDeleted;
 

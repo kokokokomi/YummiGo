@@ -6,14 +6,14 @@
 
     <resultMap id="BaseResultMap" type="com.sy.entity.OrderDetail">
             <id property="id" column="id" />
-            <result property="snapshotName" column="snapshot_name" />
-            <result property="snapshotImage" column="snapshot_image" />
+            <result property="snapshotName" column="name" />
+            <result property="snapshotImage" column="image" />
             <result property="orderId" column="order_id" />
             <result property="dishId" column="dish_id" />
             <result property="setmealId" column="setmeal_id" />
             <result property="dishFlavor" column="dish_flavor" />
             <result property="number" column="number" />
-            <result property="unitPrice" column="unit_price" />
+            <result property="unitPrice" column="amount" />
             <result property="isDeleted" column="is_deleted" />
             <result property="version" column="version" />
     </resultMap>

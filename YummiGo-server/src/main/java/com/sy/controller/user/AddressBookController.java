@@ -3,19 +3,23 @@ package com.sy.controller.user;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sy.constant.DeleteConstant;
 import com.sy.context.BaseContext;
+import com.sy.dto.AddressDTO;
 import com.sy.entity.AddressBook;
 import com.sy.result.Result;
 import com.sy.service.AddressBookService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("user/addressBook")
+@RequestMapping("user/address")
 @Tag(name = "C-Address-API")
+@Slf4j
 public class AddressBookController {
     @Autowired
     private AddressBookService addressBookService;
@@ -38,13 +42,23 @@ public class AddressBookController {
 
     /**
      * Add new address  新しい住所を追加
-     * @param addressBook
+     * @param
      * @return
      */
     @PostMapping
     @Operation(summary = "Add address")
-    public Result addAddress(@RequestBody AddressBook addressBook) {
+    public Result addAddress(@RequestBody AddressDTO dto) {
+        log.info("tianjia "+dto.toString());
+        AddressBook addressBook = new AddressBook();
+        BeanUtils.copyProperties(dto, addressBook);
         addressBook.setUserId(BaseContext.getCurrentId());
+        String fullAddress = String.join("",
+                dto.getProvinceName(),
+                dto.getCityName(),
+                dto.getDistrictName(),
+                dto.getDetail()
+        );
+        addressBook.setFullAddress(fullAddress);
         addressBookService.save(addressBook);
         return Result.success();
     }
@@ -69,6 +83,16 @@ public class AddressBookController {
     @PutMapping
     @Operation(summary = "Update address")
     public Result updateAddress(@RequestBody AddressBook addressBook) {
+        log.info("updateAddress: "+addressBook.toString());
+        String fullAddress = String.join("",
+                addressBook.getProvinceName(),
+                addressBook.getCityName(),
+                addressBook.getDistrictName(),
+                addressBook.getDetail()
+        );
+        //TODO:还是不理解为什么不会直接填充，不传入update_time也会被带进来旧值
+        addressBook.setUpdateTime(null);
+        addressBook.setFullAddress(fullAddress);
         addressBookService.updateAddress(addressBook);
         return Result.success();
     }

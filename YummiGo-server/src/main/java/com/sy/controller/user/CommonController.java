@@ -1,4 +1,4 @@
-package com.sy.controller.admin;
+package com.sy.controller.user;
 
 import com.sy.constant.MessageConstant;
 import com.sy.result.Result;
@@ -16,8 +16,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.UUID;
 
-@RestController("AdminCommonController")
-@RequestMapping("admin/common")
+@RestController("UserCommonController")
+@RequestMapping("user/common")
 @Tag(name = "Common api")
 @Slf4j
 public class CommonController {

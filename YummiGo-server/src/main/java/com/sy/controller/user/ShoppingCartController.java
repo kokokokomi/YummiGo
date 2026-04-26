@@ -31,7 +31,7 @@ public class ShoppingCartController {
     @PostMapping("add")
     @Operation(summary = "add shoppingCart")
     public Result add(@RequestBody ShoppingCartDTO shoppingCartDTO) {
-        log.info("shoppingCartDTO: {}", shoppingCartDTO);
+        log.info("shoppingCartDTO在哪呢快出来啊: {}", shoppingCartDTO);
         shoppingCartService.addShoppingCart(shoppingCartDTO);
         return Result.success();
     }
@@ -49,6 +49,7 @@ public class ShoppingCartController {
                         .eq(ShoppingCart::getUserId, BaseContext.getCurrentId())
                         .eq(ShoppingCart::getIsDeleted,DeleteConstant.NOT_DELETED)
         );
+        log.info("list:{}"+list);
         return Result.success(list);
     }
 
@@ -81,4 +82,5 @@ public class ShoppingCartController {
         shoppingCartService.subShoppingCart(shoppingCartDTO);
         return Result.success();
     }
+
 }

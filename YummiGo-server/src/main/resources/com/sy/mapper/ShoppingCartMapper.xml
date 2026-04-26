@@ -25,7 +25,7 @@
         version
     </sql>
     <update id="updateNumberById">
-        UPDATE shopping_cart SET number =#{number}
+        UPDATE shopping_cart SET number =#{number},amount=#{amount}
         WHERE id=#{id}
     </update>
     <select id="list" resultType="com.sy.entity.ShoppingCart">

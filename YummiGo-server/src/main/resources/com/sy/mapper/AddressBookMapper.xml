@@ -35,28 +35,5 @@
         UPDATE address_book SET is_default=#{isDefault}
         WHERE user_id=#{userId}
     </update>
-    <update id="updateAddress">
-        UPDATE address_book
-        <set>
-            <if test="consignee != null">
-                consignee = #{consignee},
-            </if>
-            <if test="sex != null">
-                sex = #{sex},
-            </if>
-            <if test="phone != null">
-                phone = #{phone},
-            </if>
-            <if test="detail != null">
-                detail = #{detail},
-            </if>
-            <if test="label != null">
-                label = #{label},
-            </if>
-            <if test="isDefault != null">
-                is_default = #{isDefault},
-            </if>
-        </set>
-        WHERE id = #{id}
-    </update>
+
 </mapper>

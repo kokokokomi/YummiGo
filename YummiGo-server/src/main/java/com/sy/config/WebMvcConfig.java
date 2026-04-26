@@ -25,8 +25,9 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
     protected void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtTokenAdminInterceptor).addPathPatterns()
                 .addPathPatterns("/admin/**","/user/**")
-                .excludePathPatterns("/admin/employee/login","/user/user/login")
+                .excludePathPatterns("/admin/employee/login","/user/user/login","/user/stripe/**")
                 .excludePathPatterns("/admin/ws/**");
+
     }
 
     //静的リソースのマッピングを設定する no need in openapi

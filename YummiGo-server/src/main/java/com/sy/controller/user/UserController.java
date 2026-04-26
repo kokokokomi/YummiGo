@@ -1,6 +1,7 @@
 package com.sy.controller.user;
 
 import com.sy.context.BaseContext;
+import com.sy.dto.PasswordEditDTO;
 import com.sy.dto.UserUpdateDTO;
 import com.sy.dto.UserLoginDTO;
 import com.sy.entity.User;
@@ -65,8 +66,17 @@ public class UserController {
     @PutMapping("updateInfo")
     @Operation(summary = "Update user info")
     public Result updateInfo(@RequestBody UserUpdateDTO userUpdateDTO) {
-        Long userId = BaseContext.getCurrentId();
         userService.updateInfo(userUpdateDTO);
+        return Result.success();
+    }
+
+    @PutMapping("resetPwd")
+    @Operation(summary = "Update user password")
+    public Result updatePwd(@RequestBody PasswordEditDTO passwordEditDTO) {
+        Long userId = BaseContext.getCurrentId();
+        User user = userService.getById(userId);
+        user.setPassword(passwordEditDTO.getNewPassword());
+        userService.updateById(user);
         return Result.success();
     }
 

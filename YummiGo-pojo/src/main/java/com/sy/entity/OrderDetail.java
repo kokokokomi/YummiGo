@@ -24,9 +24,9 @@ public class OrderDetail {
     @TableId
     private Long id;
 
-    private String snapshotName;
+    private String name;
 
-    private String snapshotImage;
+    private String image;
 
     private Long orderId;
 
@@ -38,7 +38,7 @@ public class OrderDetail {
 
     private Integer number;
 
-    private BigDecimal unitPrice;
+    private BigDecimal amount;
 
     private Integer isDeleted;
 
