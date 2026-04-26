@@ -1,0 +1,54 @@
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    auto-mapping-behavior: full
+    map-underscore-to-camel-case: true
+  type-aliases-package: com.sy.pojo
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+spring:
+  profiles:
+    active: dev
+  main:
+    allow-circular-references: true
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      driver-class-name: ${sy.datasource.driver-class-name}
+      url: jdbc:mysql://${sy.datasource.host}:${sy.datasource.port}/${sy.datasource.database}?serverTimezone=Asia/Tokyo&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+      username: ${sy.datasource.username}
+      password: ${sy.datasource.password}
+  data:
+    redis:
+      host: ${sy.redis.host}
+      port: ${sy.redis.port}
+
+
+server:
+  port: 8080
+  address: 0.0.0.0
+
+sy:
+  jwt:
+    admin-secret-key: kokomikokomikokomikokomikokomikokomi
+    admin-ttl: 7200000
+    admin-token-name: Authorization
+    user-secret-key: kokomikokomikokomikokomisysysysysyorz
+    user-ttl: 10000000
+    user-token-name: Authorization
+  alioss:
+    access-key-id: ${sy.alioss.access-key-id}
+    access-key-secret: ${sy.alioss.access-key-secret}
+    endpoint: ${sy.alioss.endpoint}
+    bucket-name: ${sy.alioss.bucket-name}
+  stripe:
+    apiKey: ${sy.stripe.apiKey}
+    # Dashboard / Stripe CLI 的 Webhook 签名密钥；不配则无法校验 webhook
+    webhookSecret: ${sy.stripe.webhookSecret:}
+
+
