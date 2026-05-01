@@ -8,8 +8,11 @@ import com.stripe.model.Event;
 import com.stripe.net.Webhook;
 import com.sy.constant.MessageConstant;
 import com.sy.context.BaseContext;
+import com.sy.dto.OrdersCancelDTO;
+import com.sy.dto.OrdersConfirmDTO;
 import com.sy.dto.OrdersPageQueryDTO;
 import com.sy.dto.OrdersPaymentDTO;
+import com.sy.dto.OrdersRejectionDTO;
 import com.sy.dto.OrdersSubmitDTO;
 import com.sy.entity.AddressBook;
 import com.sy.entity.OrderDetail;
@@ -22,7 +25,6 @@ import com.sy.mapper.AddressBookMapper;
 import com.sy.mapper.OrderDetailMapper;
 import com.sy.mapper.ShoppingCartMapper;
 import com.sy.result.PageResult;
-import com.sy.result.Result;
 import com.sy.service.OrdersService;
 import com.sy.mapper.OrdersMapper;
 import com.sy.vo.OrderPaymentStatusVO;
@@ -411,6 +413,123 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
             return empty;
         }
         return vo;
+    }
+
+    @Override
+    @Transactional
+    public void confirm(OrdersConfirmDTO ordersConfirmDTO) {
+        Orders order = loadOrderOrThrow(ordersConfirmDTO.getId());
+        if (!Objects.equals(order.getStatus(), Orders.TO_BE_CONFIRMED)) {
+            throw new OrderBusinessException("当前订单状态不支持接单");
+        }
+        order.setStatus(Orders.CONFIRMED);
+        if (order.getEstimatedDeliveryTime() == null) {
+            order.setEstimatedDeliveryTime(LocalDateTime.now().plusMinutes(30));
+        }
+        ordersMapper.updateById(order);
+    }
+
+    @Override
+    @Transactional
+    public void reject(OrdersRejectionDTO ordersRejectionDTO) {
+        Orders order = loadOrderOrThrow(ordersRejectionDTO.getId());
+        if (!Objects.equals(order.getStatus(), Orders.TO_BE_CONFIRMED)) {
+            throw new OrderBusinessException("当前订单状态不支持拒单");
+        }
+        order.setStatus(Orders.CANCELLED);
+        order.setRejectionReason(ordersRejectionDTO.getRejectionReason());
+        order.setCancelReason(ordersRejectionDTO.getRejectionReason());
+        order.setCancelTime(LocalDateTime.now());
+        if (Objects.equals(order.getPayStatus(), Orders.PAID)) {
+            order.setPayStatus(Orders.REFUND);
+        }
+        ordersMapper.updateById(order);
+    }
+
+    @Override
+    @Transactional
+    public void cancel(OrdersCancelDTO ordersCancelDTO) {
+        Orders order = loadOrderOrThrow(ordersCancelDTO.getId());
+        // 商家端取消：待付款/待接单/待派送/派送中 都允许取消
+        if (!(Objects.equals(order.getStatus(), Orders.PENDING_PAYMENT)
+                || Objects.equals(order.getStatus(), Orders.TO_BE_CONFIRMED)
+                || Objects.equals(order.getStatus(), Orders.CONFIRMED)
+                || Objects.equals(order.getStatus(), Orders.DELIVERY_IN_PROGRESS))) {
+            throw new OrderBusinessException("当前订单状态不支持取消");
+        }
+        order.setStatus(Orders.CANCELLED);
+        order.setCancelReason(ordersCancelDTO.getCancelReason());
+        order.setCancelTime(LocalDateTime.now());
+        if (Objects.equals(order.getPayStatus(), Orders.PAID)) {
+            order.setPayStatus(Orders.REFUND);
+        }
+        ordersMapper.updateById(order);
+    }
+
+    @Override
+    @Transactional
+    public void delivery(Long id) {
+        Orders order = loadOrderOrThrow(id);
+        if (!Objects.equals(order.getStatus(), Orders.CONFIRMED)) {
+            throw new OrderBusinessException("当前订单状态不支持派送");
+        }
+        order.setStatus(Orders.DELIVERY_IN_PROGRESS);
+        ordersMapper.updateById(order);
+    }
+
+    @Override
+    @Transactional
+    public void complete(Long id) {
+        Orders order = loadOrderOrThrow(id);
+        if (!Objects.equals(order.getStatus(), Orders.DELIVERY_IN_PROGRESS)) {
+            throw new OrderBusinessException("当前订单状态不支持完成");
+        }
+        order.setStatus(Orders.COMPLETED);
+        order.setDeliveryTime(LocalDateTime.now());
+        ordersMapper.updateById(order);
+    }
+
+    @Override
+    @Transactional
+    public void userCancelOrder(Long orderId, Long userId, String reason) {
+        Orders order = loadOrderOrThrow(orderId);
+        if (!Objects.equals(order.getUserId(), userId)) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        if (!(Objects.equals(order.getStatus(), Orders.PENDING_PAYMENT)
+                || Objects.equals(order.getStatus(), Orders.TO_BE_CONFIRMED))) {
+            throw new OrderBusinessException("当前订单状态不可取消");
+        }
+        order.setStatus(Orders.CANCELLED);
+        order.setCancelReason((reason == null || reason.isBlank()) ? "用户取消" : reason);
+        order.setCancelTime(LocalDateTime.now());
+        if (Objects.equals(order.getPayStatus(), Orders.PAID)) {
+            order.setPayStatus(Orders.REFUND);
+        }
+        ordersMapper.updateById(order);
+    }
+
+    /**
+     * 状態とオーダー時間によってオーダーリストを得る
+     * @param status
+     * @param orderTime
+     * @return
+     */
+    @Override
+    public List<Orders> getByStatusAndOrderTimeLT(Integer status, LocalDateTime orderTime) {
+        return this.list(
+                new LambdaQueryWrapper<Orders>()
+                        .eq(Orders::getStatus, status)
+                        .lt(Orders::getOrderTime, orderTime)
+        );
+    }
+
+    private Orders loadOrderOrThrow(Long id) {
+        Orders order = ordersMapper.selectById(id);
+        if (order == null || Objects.equals(order.getIsDeleted(), 1)) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        return order;
     }
 
     /**

@@ -2,6 +2,7 @@ package com.sy.controller.user;
 
 import com.sy.context.BaseContext;
 import com.sy.dto.PasswordEditDTO;
+import com.sy.dto.GoogleLoginDTO;
 import com.sy.dto.UserUpdateDTO;
 import com.sy.dto.UserLoginDTO;
 import com.sy.entity.User;
@@ -34,6 +35,14 @@ public class UserController {
         UserLoginVO result=userService.login(userLoginDTO);
         System.out.println("login login毕竟还是v放荡不羁"+result);
 
+        return Result.success(result);
+    }
+
+    @PostMapping("google-login")
+    @Operation(summary = "User Google login API")
+    public Result<UserLoginVO> googleLogin(@RequestBody GoogleLoginDTO googleLoginDTO) {
+        log.info("google login");
+        UserLoginVO result = userService.googleLogin(googleLoginDTO);
         return Result.success(result);
     }
 

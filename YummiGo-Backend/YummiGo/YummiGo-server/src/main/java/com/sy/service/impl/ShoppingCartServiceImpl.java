@@ -2,6 +2,7 @@ package com.sy.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.sy.constant.DeleteConstant;
 import com.sy.context.BaseContext;
 import com.sy.dto.ShoppingCartDTO;
 import com.sy.entity.Dish;
@@ -48,7 +49,8 @@ public class ShoppingCartServiceImpl extends ServiceImpl<ShoppingCartMapper, Sho
         shoppingCart.setUserId(currentId);
 
         LambdaQueryWrapper<ShoppingCart> query = new LambdaQueryWrapper<>();
-        query.eq(ShoppingCart::getUserId, currentId);
+        query.eq(ShoppingCart::getUserId, currentId)
+                .and(w -> w.isNull(ShoppingCart::getIsDeleted).or().eq(ShoppingCart::getIsDeleted, DeleteConstant.NOT_DELETED));
         if (dishId != null) {
             query.eq(ShoppingCart::getDishId, dishId);
             if (dishFlavor != null) {
@@ -90,6 +92,7 @@ public class ShoppingCartServiceImpl extends ServiceImpl<ShoppingCartMapper, Sho
                 shoppingCart.setAmount(setmeal.getPrice());
             }
             shoppingCart.setNumber(1);
+            shoppingCart.setIsDeleted(DeleteConstant.NOT_DELETED);
             //TODO:验证一下这createtime有没有更新
 //            shoppingCart.setCreateTime(LocalDateTime.now());
             System.out.println("加入的购物车项："+shoppingCart);
@@ -114,7 +117,8 @@ public class ShoppingCartServiceImpl extends ServiceImpl<ShoppingCartMapper, Sho
         String dishFlavor = shoppingCartDTO.getDishFlavor();
 
         LambdaQueryWrapper<ShoppingCart> query = new LambdaQueryWrapper<>();
-        query.eq(ShoppingCart::getUserId, currentId);
+        query.eq(ShoppingCart::getUserId, currentId)
+                .and(w -> w.isNull(ShoppingCart::getIsDeleted).or().eq(ShoppingCart::getIsDeleted, DeleteConstant.NOT_DELETED));
         if (dishId != null) {
             query.eq(ShoppingCart::getDishId, dishId);
             if (dishFlavor != null) {

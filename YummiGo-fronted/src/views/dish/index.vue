@@ -11,8 +11,10 @@ import { useRouter } from 'vue-router'
 interface dish {
   id: number
   name: string
-  pic: string
-  detail: string
+  image?: string
+  pic?: string
+  description?: string
+  detail?: string
   price: number
   status: string
   categoryId: number
@@ -69,6 +71,13 @@ const showPageList = async () => {
   console.log(res.data)
   dishList.value = res.data.records
   total.value = res.data.total
+}
+const resolveImageUrl = (path?: string) => {
+  if (!path) return ''
+  if (/^(https?:)?\/\//.test(path) || path.startsWith('data:') || path.startsWith('blob:')) return path
+  if (path.startsWith('/api/')) return path
+  if (path.startsWith('/')) return `/api${path}`
+  return `/api/${path}`
 }
 init() // 页面初始化，写在这里时的生命周期是beforecreated/created的时候
 showPageList() // 页面一开始就要展示分页菜品列表
@@ -201,13 +210,17 @@ const deleteBatch = (row?: any) => {
       <el-table-column type="selection" width="55" />
       <!-- <el-table-column prop="id" label="id" /> -->
       <el-table-column prop="name" label="菜名" align="center" />
-      <el-table-column prop="pic" label="图片" align="center">
+      <el-table-column prop="image" label="图片" align="center">
         <template #default="scope">
-          <img v-if="scope.row.pic" :src="scope.row.pic" alt="" />
+          <img v-if="scope.row.image || scope.row.pic" :src="resolveImageUrl(scope.row.image || scope.row.pic)" alt="" />
           <img v-else src="/src/assets/image/user_default.png" alt="" />
         </template>
       </el-table-column>
-      <el-table-column prop="detail" label="详情" width="200px" align="center" />
+      <el-table-column label="详情" width="200px" align="center">
+        <template #default="scope">
+          {{ scope.row.description || scope.row.detail || '-' }}
+        </template>
+      </el-table-column>
       <el-table-column prop="price" label="价格" align="center" />
       <el-table-column prop="status" label="状态" align="center">
         <template #default="scope">

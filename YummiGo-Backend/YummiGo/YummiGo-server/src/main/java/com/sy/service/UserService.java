@@ -1,6 +1,7 @@
 package com.sy.service;
 
 import com.sy.dto.UserLoginDTO;
+import com.sy.dto.GoogleLoginDTO;
 import com.sy.dto.UserUpdateDTO;
 import com.sy.entity.User;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -18,4 +19,7 @@ public interface UserService extends IService<User> {
 
     //user update info
     void updateInfo(UserUpdateDTO userUpdateDTO);
+
+    // google login
+    UserLoginVO googleLogin(GoogleLoginDTO googleLoginDTO);
 }

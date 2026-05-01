@@ -2,6 +2,7 @@ package com.sy.controller.user;
 
 import com.sy.context.BaseContext;
 import com.sy.dto.OrdersPageQueryDTO;
+import com.sy.dto.OrdersCancelDTO;
 import com.sy.dto.OrdersPaymentDTO;
 import com.sy.dto.OrdersSubmitDTO;
 import com.sy.entity.Orders;
@@ -103,6 +104,14 @@ public class OrderController {
         log.info("user getOrderById:{}", id);
         OrderVO result = ordersService.getOrderById(id, BaseContext.getCurrentId());
         return Result.success(result);
+    }
+
+    @PutMapping("cancel/{id}")
+    @Operation(summary = "User cancel order")
+    public Result<String> userCancel(@PathVariable Long id, @RequestBody(required = false) OrdersCancelDTO dto) {
+        String reason = dto == null ? "用户取消" : dto.getCancelReason();
+        ordersService.userCancelOrder(id, BaseContext.getCurrentId(), reason);
+        return Result.success();
     }
 
 

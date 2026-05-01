@@ -81,7 +81,8 @@ const changedOrderList = reactive([
 ])
 
 const activeIndex = ref(0)
-const isMerchantCancelEnabled = false
+// 后端已适配 /order/cancel 后可启用取消订单
+const isMerchantCancelEnabled = true
 
 // 监视订单数量变化
 watch(orderStatics, (newValue) => {
@@ -108,8 +109,10 @@ const normalizeOrderId = (id: unknown): string | null => {
 }
 
 // 初始化时需要分页查询，展示所有订单
-const init = async (activeIndex: number = 0, search?: boolean) => {
+const init = async (tabStatus: number = 0, search?: boolean) => {
   search && (isSearch.value = search)
+  // 让当前 tab 与查询状态保持同步
+  activeIndex.value = tabStatus
   const params = {
     page: page.value,
     pageSize: pageSize.value,
@@ -117,13 +120,13 @@ const init = async (activeIndex: number = 0, search?: boolean) => {
     phone: phone.value || undefined,
     beginTime: rangeTime.value && rangeTime.value.length > 0 ? rangeTime.value[0] : undefined,
     endTime: rangeTime.value && rangeTime.value.length > 0 ? rangeTime.value[1] : undefined,
-    status: activeIndex || undefined,
+    status: tabStatus || undefined,
   }
   try {
     const res = await getOrderDetailPageAPI(params)
     if (res.data.code === 1) {
       tableData.value = res.data.data.records
-      orderStatus.value = activeIndex
+      orderStatus.value = tabStatus
       counts.value = Number(res.data.data.total)
       await getOrderListBy3Status()
       console.log(tableData.value,orderStatus.value)
@@ -344,11 +347,11 @@ const getOrderType = (row: any) => {
 
 
 // init不够，还得在mounted里面再执行一遍，获取订单统计才行！
-init(Number(route.query.status) || 0)
+const routeStatus = Number(route.query.status) || 0
+activeIndex.value = routeStatus
+init(routeStatus)
 onMounted(async () => {
-  if (route.query.status) {
-    defaultActivity.value = Number(route.query.status)
-  }
+  if (route.query.status) defaultActivity.value = Number(route.query.status)
   // 获取订单统计数据（3种状态的数量）
   await getOrderListBy3Status()
   // 如果路径中有orderId值，说明是点击右上角消息通知进来的
@@ -447,7 +450,7 @@ onMounted(async () => {
                   @click="orderReject(scope.row), (isTableOperateBtn = true)">
                   拒单
                 </el-button>
-                <el-button v-if="[1, 3, 4, 5].includes(scope.row.status)" type="danger" link
+                <el-button v-if="[1, 3, 4].includes(scope.row.status)" type="danger" link
                   @click="cancelOrder(scope.row)">
                   取消
                 </el-button>

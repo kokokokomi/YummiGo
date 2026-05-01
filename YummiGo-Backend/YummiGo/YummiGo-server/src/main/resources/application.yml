@@ -50,5 +50,8 @@ sy:
     apiKey: ${sy.stripe.apiKey}
     # Dashboard / Stripe CLI 的 Webhook 签名密钥；不配则无法校验 webhook
     webhookSecret: ${sy.stripe.webhookSecret:}
+  google:
+    # Google OAuth Web Client ID（用于校验移动端上传的 idToken 的 aud）
+    client-id: ${sy.google.client-id:}
 
 

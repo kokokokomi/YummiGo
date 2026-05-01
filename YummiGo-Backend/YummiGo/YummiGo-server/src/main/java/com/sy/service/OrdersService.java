@@ -2,6 +2,9 @@ package com.sy.service;
 
 import com.sy.dto.OrdersPageQueryDTO;
 import com.sy.dto.OrdersPaymentDTO;
+import com.sy.dto.OrdersCancelDTO;
+import com.sy.dto.OrdersConfirmDTO;
+import com.sy.dto.OrdersRejectionDTO;
 import com.sy.dto.OrdersSubmitDTO;
 import com.sy.entity.Orders;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -11,6 +14,10 @@ import com.sy.vo.OrderPaymentVO;
 import com.sy.vo.OrderStatisticsVO;
 import com.sy.vo.OrderSubmitVO;
 import com.sy.vo.OrderVO;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
 
 /**
 * @author kokomi
@@ -51,4 +58,27 @@ public interface OrdersService extends IService<Orders> {
 
     /** 商家端：待处理(待接单)、待派送、派送中订单数量 */
     OrderStatisticsVO orderStatistics();
+
+    /** 商家端：接单 */
+    void confirm(OrdersConfirmDTO ordersConfirmDTO);
+
+    /** 商家端：拒单 */
+    void reject(OrdersRejectionDTO ordersRejectionDTO);
+
+    /** 商家端：取消订单 */
+    void cancel(OrdersCancelDTO ordersCancelDTO);
+
+    /** 商家端：派送 */
+    void delivery(Long id);
+
+    /** 商家端：完成订单 */
+    void complete(Long id);
+
+    /** 用户端：取消订单（仅允许取消自己的未完成订单） */
+    void userCancelOrder(Long orderId, Long userId, String reason);
+
+    /**
+     *
+     */
+    List<Orders> getByStatusAndOrderTimeLT(Integer status, LocalDateTime orderTime);
 }

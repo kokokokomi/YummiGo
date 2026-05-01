@@ -141,7 +141,7 @@ body {
   width: 100%;
   height: 100vh;
   background-size: cover;
-  background-image: url('../../assets/image/login.jpg');
+  background-image: url('../../assets/image/loginpage.jpg');
   overflow: hidden; // 防止页面滚动条闪动
 }
 

@@ -12,9 +12,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("user/address")
@@ -23,6 +27,7 @@ import java.util.List;
 public class AddressBookController {
     @Autowired
     private AddressBookService addressBookService;
+    private final RestTemplate restTemplate = new RestTemplate();
 
     /**
      * Get all address information for the currently logged-in user
@@ -134,5 +139,37 @@ public class AddressBookController {
             return Result.success(list.get(0));
         }
         return Result.error("Default address not found");
+    }
+
+    /**
+     * 免费定位反查（OpenStreetMap Nominatim）
+     */
+    @GetMapping("reverse-geocode")
+    @Operation(summary = "Reverse geocode by lat/lon")
+    public Result<Map<String, Object>> reverseGeocode(@RequestParam Double lat, @RequestParam Double lon) {
+        String url = "https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat="
+                + lat + "&lon=" + lon + "&accept-language=ja";
+        try {
+            ResponseEntity<Map> res = restTemplate.getForEntity(url, Map.class);
+            Map<String, Object> body = res.getBody();
+            if (body == null) return Result.error("Location lookup failed");
+            Map<String, Object> result = new HashMap<>();
+            Map<String, Object> addr = (Map<String, Object>) body.get("address");
+            result.put("displayName", body.get("display_name"));
+            if (addr != null) {
+                result.put("provinceName", safe(addr.get("state")));
+                result.put("cityName", safe(addr.get("city")).isEmpty() ? safe(addr.get("town")) : safe(addr.get("city")));
+                result.put("districtName", safe(addr.get("suburb")).isEmpty() ? safe(addr.get("county")) : safe(addr.get("suburb")));
+                result.put("detail", safe(addr.get("road")));
+            }
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("reverse geocode failed", e);
+            return Result.error("Location lookup failed");
+        }
+    }
+
+    private String safe(Object o) {
+        return o == null ? "" : String.valueOf(o);
     }
 }
