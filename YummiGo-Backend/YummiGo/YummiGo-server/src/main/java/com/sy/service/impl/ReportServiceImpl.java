@@ -2,12 +2,15 @@ package com.sy.service.impl;
 
 import ch.qos.logback.core.model.INamedModel;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.sy.dto.GoodsSalesDTO;
 import com.sy.entity.Orders;
 import com.sy.entity.User;
+import com.sy.mapper.OrderDetailMapper;
 import com.sy.mapper.OrdersMapper;
 import com.sy.mapper.UserMapper;
 import com.sy.service.ReportService;
 import com.sy.vo.OrderReportVO;
+import com.sy.vo.SalesTop10ReportVO;
 import com.sy.vo.TurnoverReportVO;
 import com.sy.vo.UserReportVO;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -32,6 +36,9 @@ public class ReportServiceImpl implements ReportService {
 
     @Autowired
     UserMapper userMapper;
+
+    @Autowired
+    OrderDetailMapper orderDetailMapper;
 
     /**
      * ある時間帯の売り上げ統計
@@ -167,6 +174,36 @@ public class ReportServiceImpl implements ReportService {
                 .totalOrderCount(totalCount)
                 .validOrderCount(validCount)
                 .orderCompletionRate(orderCompletionRate)
+                .build();
+    }
+
+    /**
+     * 売上ランキングtop 10 料理名と販売数
+     * @param begin
+     * @param end
+     * @return
+     */
+    @Override
+    public SalesTop10ReportVO getSalesTop10Statistics(LocalDate begin, LocalDate end) {
+        //completed order + order_detail number
+        /*select od.name,sum(od.number) num from order_detail od ,orders o
+        where od.order_id=o.id
+         and o.status=Orders.COMPLETED
+         and o.order_time <? >?
+         and o.is_deleted!=0
+        group by od.name
+        order by num desc limit 0,10
+         */
+        LocalDateTime beginTime=LocalDateTime.of(begin, LocalTime.MIN);
+        LocalDateTime endTime=LocalDateTime.of(end, LocalTime.MAX);
+        List<GoodsSalesDTO> salesTop10 = ordersMapper.getSalesTop10(beginTime, endTime);
+
+        List<String> names = salesTop10.stream().map(GoodsSalesDTO::getName).collect(Collectors.toList());
+        List<Integer> sales=salesTop10.stream().map(GoodsSalesDTO::getNumber).collect(Collectors.toList());
+
+        return SalesTop10ReportVO.builder()
+                .nameList(StringUtils.join(names,","))
+                .numberList(StringUtils.join(sales,","))
                 .build();
     }
 }

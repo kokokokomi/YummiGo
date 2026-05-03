@@ -3,6 +3,7 @@ package com.sy.controller.admin;
 import com.sy.result.Result;
 import com.sy.service.ReportService;
 import com.sy.vo.OrderReportVO;
+import com.sy.vo.SalesTop10ReportVO;
 import com.sy.vo.TurnoverReportVO;
 import com.sy.vo.UserReportVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -67,5 +68,19 @@ public class ReportController {
                                              @DateTimeFormat(pattern = "yyyy-MM-dd")LocalDate end){
         log.info("order report :{},{}", begin, end);
         return Result.success(reportService.getOrderStatistics(begin,end));
+    }
+
+    /**
+     * 売上ランキングtop10
+     * @param begin
+     * @param end
+     * @return
+     */
+    @GetMapping("/top10Statistics")
+    @Operation(summary = "top 10")
+    public Result<SalesTop10ReportVO> salesReport(@DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate begin,
+                                                  @DateTimeFormat(pattern = "yyyy-MM-dd")LocalDate end){
+        log.info("top10 report :{},{}", begin, end);
+        return Result.success(reportService.getSalesTop10Statistics(begin,end));
     }
 }

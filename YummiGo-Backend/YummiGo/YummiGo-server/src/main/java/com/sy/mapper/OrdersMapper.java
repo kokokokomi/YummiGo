@@ -1,6 +1,7 @@
 package com.sy.mapper;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sy.dto.GoodsSalesDTO;
 import com.sy.dto.OrdersPageQueryDTO;
 import com.sy.entity.Orders;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -8,6 +9,7 @@ import com.sy.vo.OrderStatisticsVO;
 import com.sy.vo.OrderVO;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +20,9 @@ import java.util.Map;
 * @Entity com.sy.entity.Orders
 */
 public interface OrdersMapper extends BaseMapper<Orders> {
+
+    /**get sales top 10*/
+    List<GoodsSalesDTO> getSalesTop10(LocalDateTime begin, LocalDateTime end);
 
     //
     Integer countByStatus(Integer toBeConfirmed);
