@@ -1,6 +1,7 @@
 package com.sy.service;
 
 import com.sy.vo.TurnoverReportVO;
+import com.sy.vo.UserReportVO;
 
 import java.time.LocalDate;
 
@@ -12,4 +13,7 @@ public interface ReportService {
      * @return
      */
     TurnoverReportVO getTurnoverStatistics(LocalDate begin, LocalDate end);
+
+    //ある時間帯のユーザー数統計
+    UserReportVO getUserStatistics(LocalDate begin, LocalDate end);
 }

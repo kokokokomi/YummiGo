@@ -1,9 +1,14 @@
 package com.sy.service.impl;
 
+import ch.qos.logback.core.model.INamedModel;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.sy.entity.Orders;
+import com.sy.entity.User;
 import com.sy.mapper.OrdersMapper;
+import com.sy.mapper.UserMapper;
 import com.sy.service.ReportService;
 import com.sy.vo.TurnoverReportVO;
+import com.sy.vo.UserReportVO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +28,9 @@ public class ReportServiceImpl implements ReportService {
 
     @Autowired
     OrdersMapper ordersMapper;
+
+    @Autowired
+    UserMapper userMapper;
 
     /**
      * ある時間帯の売り上げ統計
@@ -62,6 +70,49 @@ public class ReportServiceImpl implements ReportService {
                 .builder()
                 .dateList(StringUtils.join(dateList,","))
                 .turnoverList(StringUtils.join(turnoverList,","))
+                .build();
+    }
+
+    /**
+     * ある時間帯のユーザー数統計
+     * @param begin
+     * @param end
+     * @return
+     */
+    @Override
+    public UserReportVO getUserStatistics(LocalDate begin, LocalDate end) {
+        List<LocalDate> dateList=new ArrayList<>();
+        dateList.add(begin);
+        while (!begin.equals(end)){
+            begin=begin.plusDays(1);
+            dateList.add(begin);
+        }
+        //select count(id) from user where create_time<? and >? and is_deleted=0
+        List<Integer> newUserList=new ArrayList<>();
+        List<Integer> totalUserList=new ArrayList<>();
+
+        for (LocalDate date : dateList) {
+            LocalDateTime beginTime=LocalDateTime.of(date, LocalTime.MIN);
+            LocalDateTime endTime=LocalDateTime.of(date, LocalTime.MAX);
+            QueryWrapper<User> queryWrapper=new QueryWrapper<>();
+            queryWrapper.between("create_time", beginTime, endTime)
+                    .eq("is_deleted", 0);
+
+            newUserList.add(userMapper.selectCount(queryWrapper).intValue());
+
+            QueryWrapper<User> totalWrapper=new QueryWrapper<>();
+            totalWrapper.lt("create_time", endTime)
+                    .eq("is_deleted", 0);
+            totalUserList.add(userMapper.selectCount(totalWrapper).intValue());
+
+        }
+
+
+        return UserReportVO
+                .builder()
+                .dateList(StringUtils.join(dateList,","))
+                .newUserList(StringUtils.join(newUserList,","))
+                .totalUserList(StringUtils.join(totalUserList,","))
                 .build();
     }
 }

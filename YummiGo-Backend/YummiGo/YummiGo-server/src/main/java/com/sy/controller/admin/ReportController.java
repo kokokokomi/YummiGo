@@ -3,6 +3,7 @@ package com.sy.controller.admin;
 import com.sy.result.Result;
 import com.sy.service.ReportService;
 import com.sy.vo.TurnoverReportVO;
+import com.sy.vo.UserReportVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,21 @@ public class ReportController {
                                                        @DateTimeFormat(pattern = "yyyy-MM-dd")LocalDate end){
         log.info("turnover report :{},{}", begin, end);
         return Result.success(reportService.getTurnoverStatistics(begin,end));
+
+    }
+
+    /**
+     * ユーザー統計
+     * @param begin
+     * @param end
+     * @return
+     */
+    @GetMapping("/userStatistics")
+    @Operation(summary = "User Report")
+    public Result<UserReportVO> userReport(@DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate begin,
+                                           @DateTimeFormat(pattern = "yyyy-MM-dd")LocalDate end){
+        log.info("user report :{},{}", begin, end);
+        return Result.success(reportService.getUserStatistics(begin,end));
 
     }
 }
