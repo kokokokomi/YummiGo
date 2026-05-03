@@ -7,6 +7,7 @@ import com.sy.entity.User;
 import com.sy.mapper.OrdersMapper;
 import com.sy.mapper.UserMapper;
 import com.sy.service.ReportService;
+import com.sy.vo.OrderReportVO;
 import com.sy.vo.TurnoverReportVO;
 import com.sy.vo.UserReportVO;
 import lombok.extern.slf4j.Slf4j;
@@ -113,6 +114,59 @@ public class ReportServiceImpl implements ReportService {
                 .dateList(StringUtils.join(dateList,","))
                 .newUserList(StringUtils.join(newUserList,","))
                 .totalUserList(StringUtils.join(totalUserList,","))
+                .build();
+    }
+
+    /**
+     * 注文トータルレポート
+     * @param begin
+     * @param end
+     * @return
+     */
+    @Override
+    public OrderReportVO getOrderStatistics(LocalDate begin, LocalDate end) {
+        List<LocalDate> dateList=new ArrayList<>();
+        dateList.add(begin);
+        while (!begin.equals(end)){
+            begin=begin.plusDays(1);
+            dateList.add(begin);
+        }
+        List<Integer> totalOrderList=new ArrayList<>();
+        List<Integer> validOrderList=new ArrayList<>();
+
+        for (LocalDate localDate : dateList) {
+            LocalDateTime beginTime=LocalDateTime.of(localDate, LocalTime.MIN);
+            LocalDateTime endTime=LocalDateTime.of(localDate, LocalTime.MAX);
+            //daily total order
+            QueryWrapper<Orders> totalOrderWrapper=new QueryWrapper<>();
+            totalOrderWrapper.between("create_time", beginTime, endTime)
+                    .eq("is_deleted", 0);
+            totalOrderList.add(ordersMapper.selectCount(totalOrderWrapper).intValue());
+
+            //daily valid order
+
+            QueryWrapper<Orders> validOrderWrapper=new QueryWrapper<>();
+            validOrderWrapper.between("create_time",beginTime, endTime)
+                    .eq("status", Orders.COMPLETED)
+                    .eq("is_deleted", 0);
+            validOrderList.add(ordersMapper.selectCount(validOrderWrapper).intValue());
+
+        }
+        //TODO:stream流相加方法
+        Integer totalCount = totalOrderList.stream().reduce(Integer::sum).get();
+        Integer validCount = validOrderList.stream().reduce(Integer::sum).get();
+
+
+        Double orderCompletionRate=0.0;
+        if(totalCount!=0){orderCompletionRate= validCount.doubleValue()/totalCount; }
+
+        return OrderReportVO.builder()
+                .dateList(StringUtils.join(dateList,","))
+                .orderCountList(StringUtils.join(totalOrderList,","))
+                .validOrderCountList(StringUtils.join(validOrderList,","))
+                .totalOrderCount(totalCount)
+                .validOrderCount(validCount)
+                .orderCompletionRate(orderCompletionRate)
                 .build();
     }
 }

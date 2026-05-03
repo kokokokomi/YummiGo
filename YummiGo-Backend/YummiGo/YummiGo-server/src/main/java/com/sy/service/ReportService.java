@@ -1,5 +1,6 @@
 package com.sy.service;
 
+import com.sy.vo.OrderReportVO;
 import com.sy.vo.TurnoverReportVO;
 import com.sy.vo.UserReportVO;
 
@@ -16,4 +17,7 @@ public interface ReportService {
 
     //ある時間帯のユーザー数統計
     UserReportVO getUserStatistics(LocalDate begin, LocalDate end);
+
+    //ある時間帯の注文トータルレポートのデータ
+    OrderReportVO getOrderStatistics(LocalDate begin, LocalDate end);
 }

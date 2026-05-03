@@ -2,6 +2,7 @@ package com.sy.controller.admin;
 
 import com.sy.result.Result;
 import com.sy.service.ReportService;
+import com.sy.vo.OrderReportVO;
 import com.sy.vo.TurnoverReportVO;
 import com.sy.vo.UserReportVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,6 +53,19 @@ public class ReportController {
                                            @DateTimeFormat(pattern = "yyyy-MM-dd")LocalDate end){
         log.info("user report :{},{}", begin, end);
         return Result.success(reportService.getUserStatistics(begin,end));
+    }
 
+    /**
+     * 注文トータルレポート
+     * @param begin
+     * @param end
+     * @return
+     */
+    @GetMapping("/orderStatistics")
+    @Operation(summary = "Orders Report")
+    public Result<OrderReportVO> orderReport(@DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate begin,
+                                             @DateTimeFormat(pattern = "yyyy-MM-dd")LocalDate end){
+        log.info("order report :{},{}", begin, end);
+        return Result.success(reportService.getOrderStatistics(begin,end));
     }
 }
