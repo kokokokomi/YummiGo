@@ -78,6 +78,11 @@ public interface OrdersService extends IService<Orders> {
     void userCancelOrder(Long orderId, Long userId, String reason);
 
     /**
+     * 用户端：已支付且待接单时催单，向商家端 WebSocket 推送 type=2（催促）消息。
+     */
+    void userRemindOrder(Long orderId, Long userId);
+
+    /**
      *
      */
     List<Orders> getByStatusAndOrderTimeLT(Integer status, LocalDateTime orderTime);

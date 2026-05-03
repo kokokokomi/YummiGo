@@ -9,6 +9,7 @@ import com.sy.vo.OrderVO;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 /**
 * @author kokomi
@@ -25,6 +26,8 @@ public interface OrdersMapper extends BaseMapper<Orders> {
 
     /** 商家工作台：待接单、待派送、派送中数量（与 Orders 状态常量一致） */
     OrderStatisticsVO selectOrderStatistics();
+
+    Double sumByMap(Map map);
 }
 
 

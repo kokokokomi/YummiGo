@@ -89,4 +89,18 @@
         FROM orders
         WHERE (is_deleted = 0 OR is_deleted IS NULL)
     </select>
+    <select id="sumByMap" resultType="java.lang.Double">
+        SELECT sum(amount) FROM orders
+        <where>
+            <if test="begin!=null">
+                AND order_time &gt; #{begin}
+            </if>
+            <if test="end!=null">
+                AND order_time &lt; #{end}
+            </if>
+            <if test="status!=null">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
 </mapper>

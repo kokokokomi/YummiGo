@@ -27,12 +27,14 @@ import com.sy.mapper.ShoppingCartMapper;
 import com.sy.result.PageResult;
 import com.sy.service.OrdersService;
 import com.sy.mapper.OrdersMapper;
+import com.sy.websocket.WebSocketServer;
 import com.sy.vo.OrderPaymentStatusVO;
 import com.sy.vo.OrderPaymentVO;
 import com.sy.vo.OrderStatisticsVO;
 import com.sy.vo.OrderSubmitVO;
 import com.sy.vo.OrderVO;
 import lombok.extern.slf4j.Slf4j;
+import org.aspectj.weaver.ast.Or;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,6 +54,9 @@ import com.stripe.param.checkout.SessionCreateParams;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.PaymentIntent;
 import com.google.gson.JsonSyntaxException;
+import com.alibaba.fastjson.JSON;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
 * @author kokomi
@@ -509,6 +514,27 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
         ordersMapper.updateById(order);
     }
 
+    @Override
+    public void userRemindOrder(Long orderId, Long userId) {
+        Orders order = loadOrderOrThrow(orderId);
+        if (!Objects.equals(order.getUserId(), userId)) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+
+        if (!Objects.equals(order.getPayStatus(), Orders.PAID) || !Objects.equals(order.getStatus(), Orders.TO_BE_CONFIRMED)) {
+            throw new OrderBusinessException("この注文では催促できません（支払済み・受付待ちのみ）");
+        }
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("event", "user_remind_order");
+        payload.put("type", Orders.USER_REMINDER);
+        payload.put("orderId", String.valueOf(order.getId()));
+        payload.put("orderNumber", order.getNumber());
+        payload.put("content", "お客様が注文 " + order.getNumber() + " の受付を催促しています。至急ご確認ください。");
+        WebSocketServer.broadcast(JSON.toJSONString(payload));
+        log.info("用户催单 orderId={} userId={}", orderId, userId);
+    }
+
     /**
      * 状態とオーダー時間によってオーダーリストを得る
      * @param status
@@ -567,6 +593,8 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
                 throw new PaymentException("订单状态更新失败，请重试");
             }
             log.info("订单支付成功，订单ID: {}, Session ID: {}", orderIdStr, sessionId);
+            // Stripe 落库成功后向商家端 WebSocket 推送，管理端 layout 根据 type/event 弹窗与音效
+            notifyMerchantsPaymentSuccess(order, sessionId);
         } catch (StripeException e) {
             log.error("Stripe 查询 Session 失败: {}", e.getMessage(), e);
             throw new PaymentException("支付服务暂不可用");
@@ -582,6 +610,28 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
         }
         String sep = successUrl.contains("?") ? "&" : "?";
         return successUrl + sep + "session_id={CHECKOUT_SESSION_ID}";
+    }
+
+    /**
+     * Stripe 支付已成功落库后，向所有已连接商家端推送 JSON（与 admin layout 中 WebSocket 解析格式一致）。<br/>
+     * 推送失败仅打日志，不改变支付结果。
+     */
+    private void notifyMerchantsPaymentSuccess(Orders order, String stripeSessionId) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("event", "stripe_payment_success");
+            payload.put("type", Orders.NEW_ORDER_REMINDER);
+            payload.put("orderId", String.valueOf(order.getId()));
+            payload.put("orderNumber", order.getNumber());
+            payload.put("content", "注文 " + order.getNumber() + " の支払いが完了しました。受付処理をお願いします。");
+            payload.put("stripeSessionId", stripeSessionId != null ? stripeSessionId : "");
+            if (order.getAmount() != null) {
+                payload.put("amount", order.getAmount().toPlainString());
+            }
+            WebSocketServer.broadcast(JSON.toJSONString(payload));
+        } catch (Exception e) {
+            log.warn("商家 WebSocket 推送失败（不影响支付结果）: {}", e.getMessage());
+        }
     }
 }
 

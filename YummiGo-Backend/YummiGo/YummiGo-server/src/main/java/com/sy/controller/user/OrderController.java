@@ -114,5 +114,16 @@ public class OrderController {
         return Result.success();
     }
 
+    /**
+     * remind merchant (paid, awaiting confirm)
+     * @param id
+     * @return
+     */
+    @PostMapping("remind/{id:\\d+}")
+    @Operation(summary = "User remind merchant")
+    public Result<String> userRemind(@PathVariable Long id) {
+        ordersService.userRemindOrder(id, BaseContext.getCurrentId());
+        return Result.success();
+    }
 
 }

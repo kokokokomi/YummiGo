@@ -38,6 +38,12 @@ public class Orders extends UpdateEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    /**
+     * user msg kind
+     */
+    public static final Integer NEW_ORDER_REMINDER = 1;
+    public static final Integer USER_REMINDER=2;
+
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 

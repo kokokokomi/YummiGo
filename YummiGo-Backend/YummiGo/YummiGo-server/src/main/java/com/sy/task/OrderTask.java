@@ -26,7 +26,7 @@ public class OrderTask {
     /**
      * ユーザー注文した後、十五分支払わなっかたら、自動的にキャンセルします
      */
-    @Scheduled(cron = "0 * * * * ? *")//毎分に触発する
+    @Scheduled(cron = "0 * * * * ? ")//毎分に触発する
 //    @Scheduled(cron="1/5 * * * * ?")
 
     public void proccessTimeoutOrder(){
