@@ -5,6 +5,7 @@ import com.sy.service.WorkSpaceService;
 import com.sy.vo.BusinessDataVO;
 import com.sy.vo.DishOverViewVO;
 import com.sy.vo.OrderOverViewVO;
+import com.sy.vo.SetmealOverViewVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
@@ -51,7 +52,7 @@ public class WorkSpaceController {
     }
 
     /**
-     * get today's dishes overview data
+     * get dishes overview data
      * @return
      */
     @GetMapping("/overviewDishes")
@@ -59,6 +60,17 @@ public class WorkSpaceController {
     public Result<DishOverViewVO> dishOverView(){
         log.info("dishOverView");
         return Result.success(workSpaceService.getDishOverViewVO());
+    }
+
+    /**
+     * get setmeals's suspension of sales
+     * @return
+     */
+    @GetMapping("/overviewSetmeals")
+    @Operation(summary = "Setmeals overview data")
+    public Result<SetmealOverViewVO> setmealOverView(){
+        log.info("setmealOverView");
+        return Result.success(workSpaceService.getSetmealOverViewVO());
     }
 
 

@@ -4,14 +4,17 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.sy.constant.StatusConstant;
 import com.sy.entity.Dish;
 import com.sy.entity.Orders;
+import com.sy.entity.Setmeal;
 import com.sy.entity.User;
 import com.sy.mapper.DishMapper;
 import com.sy.mapper.OrdersMapper;
+import com.sy.mapper.SetmealMapper;
 import com.sy.mapper.UserMapper;
 import com.sy.service.WorkSpaceService;
 import com.sy.vo.BusinessDataVO;
 import com.sy.vo.DishOverViewVO;
 import com.sy.vo.OrderOverViewVO;
+import com.sy.vo.SetmealOverViewVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +31,8 @@ public class WorkSpaceServiceImpl implements WorkSpaceService {
     private UserMapper userMapper;
     @Autowired
     private DishMapper dishMapper;
+    @Autowired
+    private SetmealMapper setmealMapper;
 
 
     @Override
@@ -121,6 +126,28 @@ public class WorkSpaceServiceImpl implements WorkSpaceService {
         return DishOverViewVO.builder()
                 .discontinued(discontinued)
                 .sold(sold)
+                .build();
+    }
+
+    /**
+     * get setmeals's suspension of sales
+     * same as dishes
+     * @return
+     */
+    @Override
+    public SetmealOverViewVO getSetmealOverViewVO() {
+        QueryWrapper<Setmeal> baseWrapper = new QueryWrapper<>();
+        baseWrapper.eq("is_deleted", 0);
+
+        Integer sold=setmealMapper.selectCount(baseWrapper.clone()
+                .eq("status", StatusConstant.ENABLE)).intValue();
+        Integer discontinued=setmealMapper.selectCount(baseWrapper.clone()
+                .eq("status",StatusConstant.DISABLE)).intValue();
+
+
+        return SetmealOverViewVO.builder()
+                .sold(sold)
+                .discontinued(discontinued)
                 .build();
     }
 }
