@@ -16,6 +16,8 @@ import java.io.Serializable;
 @AllArgsConstructor
 public class OrderOverViewVO implements Serializable {
     // 配達待ち件数
+    private  Integer waitingOrders;
+
     private Integer deliveredOrders;
 
     // 完了済み件数

@@ -3,6 +3,7 @@ package com.sy.controller.admin;
 import com.sy.result.Result;
 import com.sy.service.WorkSpaceService;
 import com.sy.vo.BusinessDataVO;
+import com.sy.vo.OrderOverViewVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
@@ -36,4 +37,16 @@ public class WorkSpaceController {
         BusinessDataVO businessDataVO = workSpaceService.getBusinessData(begin,end);
         return Result.success(businessDataVO);
     }
+
+    /**
+     * get order overview data
+     * @return
+     */
+    @GetMapping("/overviewOrders")
+    @Operation(summary = "Oder overview data")
+    public Result<OrderOverViewVO> orderOverView(){
+        log.info("orderOverView");
+        return Result.success(workSpaceService.getOrderOverView());
+    }
+    
 }

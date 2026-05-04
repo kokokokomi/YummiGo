@@ -7,10 +7,12 @@ import com.sy.mapper.OrdersMapper;
 import com.sy.mapper.UserMapper;
 import com.sy.service.WorkSpaceService;
 import com.sy.vo.BusinessDataVO;
+import com.sy.vo.OrderOverViewVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -59,6 +61,38 @@ public class WorkSpaceServiceImpl implements WorkSpaceService {
                 .orderCompletionRate(orderCompletionRate)
                 .unitPrice(unitPrice)
                 .newUsers(newUser)
+                .build();
+    }
+
+    /**
+     * Get order overview data:
+     *deliveredOrders,completed orders, cancelled orders, all orders, waitingOrders
+     * @return
+     */
+    @Override
+    public OrderOverViewVO getOrderOverView() {
+
+        QueryWrapper<Orders> baseWrapper = new QueryWrapper<>();
+        baseWrapper.eq("is_deleted", 0)
+                .gt("create_time", LocalDateTime.now().with(LocalTime.MIN));
+
+        Integer waitingOrders   = ordersMapper.selectCount(baseWrapper.clone()
+                .eq("status", Orders.TO_BE_CONFIRMED)).intValue();
+        Integer deliveredOrders = ordersMapper.selectCount(baseWrapper.clone()
+                .eq("status", Orders.CONFIRMED)).intValue();
+        Integer completedOrders = ordersMapper.selectCount(baseWrapper.clone()
+                .eq("status", Orders.COMPLETED)).intValue();
+        Integer cancelledOrders = ordersMapper.selectCount(baseWrapper.clone()
+                .eq("status", Orders.CANCELLED)).intValue();
+        Integer allOrders = ordersMapper.selectCount(baseWrapper).intValue();
+
+
+        return OrderOverViewVO.builder()
+                .waitingOrders(waitingOrders)
+                .allOrders(allOrders)
+                .cancelledOrders(cancelledOrders)
+                .completedOrders(completedOrders)
+                .deliveredOrders(deliveredOrders)
                 .build();
     }
 }
