@@ -9,15 +9,21 @@ import com.sy.mapper.OrderDetailMapper;
 import com.sy.mapper.OrdersMapper;
 import com.sy.mapper.UserMapper;
 import com.sy.service.ReportService;
-import com.sy.vo.OrderReportVO;
-import com.sy.vo.SalesTop10ReportVO;
-import com.sy.vo.TurnoverReportVO;
-import com.sy.vo.UserReportVO;
+import com.sy.service.WorkSpaceService;
+import com.sy.vo.*;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -39,6 +45,9 @@ public class ReportServiceImpl implements ReportService {
 
     @Autowired
     OrderDetailMapper orderDetailMapper;
+
+    @Autowired
+    WorkSpaceService workSpaceService;
 
     /**
      * ある時間帯の売り上げ統計
@@ -206,4 +215,80 @@ public class ReportServiceImpl implements ReportService {
                 .numberList(StringUtils.join(sales,","))
                 .build();
     }
+
+    /**
+     * export business data report
+     * @param response
+     */
+    @Override
+    public void exportBusinessData(HttpServletResponse response) {
+        //get 30 days business data
+        LocalDate begin = LocalDate.now().minusDays(30);
+        LocalDate end = LocalDate.now().minusDays(1);
+        BusinessDataVO businessData = workSpaceService
+                .getBusinessData(LocalDateTime.of(begin, LocalTime.MIN), LocalDateTime.of(end, LocalTime.MAX));
+        //apache poi -> excel
+        //his.getClass().getClassLoader().getResourceAsStream ->resource
+        InputStream in = this.getClass().getClassLoader().getResourceAsStream("template/BusinessReportTemplate.xlsx");
+
+        try{
+        XSSFWorkbook excel = new XSSFWorkbook(in);
+
+        //time
+            XSSFSheet sheet = excel.getSheet("Sheet1");
+            sheet.getRow(1).getCell(1).setCellValue("時間:"+begin+"~"+end);
+
+            //outline data
+            XSSFRow row = sheet.getRow(3);
+            setCellValue(row, 2, businessData.getTurnover());
+            setCellValue(row, 4, businessData.getOrderCompletionRate());
+            setCellValue(row, 6, businessData.getNewUsers());
+
+            row = sheet.getRow(4);
+            setCellValue(row, 2, businessData.getValidOrderCount());
+            setCellValue(row, 4, businessData.getUnitPrice());
+
+            //detailed data
+            for (int i = 0; i < 30; i++) {
+                LocalDate date=begin.plusDays(i);
+                //daily business data
+                BusinessDataVO data = workSpaceService.getBusinessData(LocalDateTime.of(date, LocalTime.MIN)
+                        , LocalDateTime.of(date, LocalTime.MAX));
+                row = sheet.getRow(7 + i);
+                //没有任何内容/样式，POI认为它们不存在
+                if (row == null) {
+                    row = sheet.createRow(7 + i);
+                }
+                setCellValue(row, 1, date.toString());
+                setCellValue(row, 2, data.getTurnover());
+                setCellValue(row, 3, data.getValidOrderCount());
+                setCellValue(row, 4, data.getOrderCompletionRate());
+                setCellValue(row, 5, data.getUnitPrice());
+                setCellValue(row, 6, data.getNewUsers());
+            }
+
+            //stream->download
+            ServletOutputStream out = response.getOutputStream();
+            excel.write(out);
+            out.close();
+            excel.close();
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+
+    }
+
+    private void setCellValue(XSSFRow row, int index, Object value) {
+        XSSFCell cell = row.getCell(index, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
+        if (value instanceof Double) {
+            cell.setCellValue((Double) value);
+        } else if (value instanceof Integer) {
+            cell.setCellValue((Integer) value);
+        } else if (value instanceof String) {
+            cell.setCellValue((String) value);
+        }
+    }
+
+
 }

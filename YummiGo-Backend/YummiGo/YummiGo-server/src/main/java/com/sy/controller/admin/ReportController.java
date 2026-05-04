@@ -8,6 +8,7 @@ import com.sy.vo.TurnoverReportVO;
 import com.sy.vo.UserReportVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -82,5 +83,15 @@ public class ReportController {
                                                   @DateTimeFormat(pattern = "yyyy-MM-dd")LocalDate end){
         log.info("top10 report :{},{}", begin, end);
         return Result.success(reportService.getSalesTop10Statistics(begin,end));
+    }
+
+    /**
+     * export business data report
+     * @param response
+     */
+    @GetMapping("export")
+    @Operation(summary = "export report")
+    public void export(HttpServletResponse response){
+        reportService.exportBusinessData(response);
     }
 }

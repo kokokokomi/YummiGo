@@ -4,6 +4,7 @@ import com.sy.vo.OrderReportVO;
 import com.sy.vo.SalesTop10ReportVO;
 import com.sy.vo.TurnoverReportVO;
 import com.sy.vo.UserReportVO;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.time.LocalDate;
 
@@ -24,4 +25,7 @@ public interface ReportService {
 
     // 売上ランキングtop10　情報
     SalesTop10ReportVO getSalesTop10Statistics(LocalDate begin, LocalDate end);
+
+    //export business data report
+    void exportBusinessData(HttpServletResponse response);
 }
