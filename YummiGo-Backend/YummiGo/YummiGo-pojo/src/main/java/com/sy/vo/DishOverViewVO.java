@@ -15,7 +15,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DishOverViewVO implements Serializable {
-    // 発売済み数量
+    // 発売中料理数量
     private Integer sold;
 
     // 販売終了数

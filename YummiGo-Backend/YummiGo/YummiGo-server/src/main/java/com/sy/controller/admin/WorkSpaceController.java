@@ -3,6 +3,7 @@ package com.sy.controller.admin;
 import com.sy.result.Result;
 import com.sy.service.WorkSpaceService;
 import com.sy.vo.BusinessDataVO;
+import com.sy.vo.DishOverViewVO;
 import com.sy.vo.OrderOverViewVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,10 +44,22 @@ public class WorkSpaceController {
      * @return
      */
     @GetMapping("/overviewOrders")
-    @Operation(summary = "Oder overview data")
+    @Operation(summary = "Orders overview data")
     public Result<OrderOverViewVO> orderOverView(){
         log.info("orderOverView");
         return Result.success(workSpaceService.getOrderOverView());
     }
-    
+
+    /**
+     * get today's dishes overview data
+     * @return
+     */
+    @GetMapping("/overviewDishes")
+    @Operation(summary = "Dishes overview data")
+    public Result<DishOverViewVO> dishOverView(){
+        log.info("dishOverView");
+        return Result.success(workSpaceService.getDishOverViewVO());
+    }
+
+
 }
