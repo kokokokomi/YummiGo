@@ -43,6 +43,23 @@ export type Setmeal = {
   description?: string;
   price: number;
   status: number;
+  setmealDishes?: SetmealDishItem[];
+};
+
+export type SetmealDishItem = {
+  dishId?: string;
+  name: string;
+  price: number;
+  copies: number;
+};
+
+export type DishItemVO = {
+  dishId?: string;
+  name: string;
+  copies: number;
+  price?: number;
+  image?: string;
+  description?: string;
 };
 
 export type ShoppingCartItem = {

@@ -1,13 +1,35 @@
+import { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 
 export default function PaymentCancelScreen() {
+  const params = useLocalSearchParams<{ orderId?: string; countdownStart?: string }>();
+
+  useEffect(() => {
+    if (params.orderId) {
+      const extra = params.countdownStart ? `&countdownStart=${String(params.countdownStart)}` : "";
+      router.replace(`/order/detail?id=${String(params.orderId)}&fromCancel=1${extra}`);
+      return;
+    }
+    router.replace("/(tabs)/orders");
+  }, [params.countdownStart, params.orderId]);
+
   return (
     <View style={styles.page}>
       <Text style={styles.title}>支払いがキャンセルされました</Text>
-      <Text style={styles.message}>必要ならカート画面から再度支払いを実行してください。</Text>
-      <Pressable style={styles.btn} onPress={() => router.replace("/(tabs)/cart")}>
-        <Text style={styles.btnText}>カートへ戻る</Text>
+      <Text style={styles.message}>注文詳細ページで15分以内に再決済できます。</Text>
+      <Pressable
+        style={styles.btn}
+        onPress={() => {
+          if (params.orderId) {
+            const extra = params.countdownStart ? `&countdownStart=${String(params.countdownStart)}` : "";
+            router.replace(`/order/detail?id=${String(params.orderId)}&fromCancel=1${extra}`);
+            return;
+          }
+          router.replace("/(tabs)/orders");
+        }}
+      >
+        <Text style={styles.btnText}>注文詳細へ</Text>
       </Pressable>
     </View>
   );

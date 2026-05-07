@@ -1,15 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 
 import { confirmPayment, getOrderById } from "@/src/api/order";
+import { useCart } from "@/src/state/cart";
 import type { OrderVO } from "@/src/types/api";
 
 export default function PaymentSuccessScreen() {
   const params = useLocalSearchParams<{ session_id?: string; orderId?: string }>();
+  const { clearAll } = useCart();
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<OrderVO | null>(null);
   const [message, setMessage] = useState("支払い情報を確認中...");
+  const navigated = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -17,6 +20,9 @@ export default function PaymentSuccessScreen() {
         if (params.session_id) {
           const status = await confirmPayment(String(params.session_id));
           setMessage(status.payStatus === 1 ? "支払いが完了しました" : "支払いステータスを更新しました");
+          if (status.payStatus === 1) {
+            await clearAll();
+          }
         } else {
           setMessage("session_id がないため、注文状態のみ表示します");
         }
@@ -30,7 +36,19 @@ export default function PaymentSuccessScreen() {
         setLoading(false);
       }
     })();
-  }, [params.session_id, params.orderId]);
+  }, [clearAll, params.session_id, params.orderId]);
+
+  // 中文注释：支付确认完成后自动进入订单详情（深链接回到本页后执行）
+  useEffect(() => {
+    if (loading || navigated.current || !params.orderId) return;
+    const id = String(params.orderId);
+    const t = setTimeout(() => {
+      navigated.current = true;
+      // 单次 replace，避免 native-stack 与 JS 状态不同步
+      router.replace(`/order/detail?id=${id}`);
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [loading, params.orderId]);
 
   if (loading) {
     return (
@@ -54,8 +72,18 @@ export default function PaymentSuccessScreen() {
         </View>
       )}
 
-      <Pressable style={styles.btn} onPress={() => router.replace("/(tabs)/orders")}>
-        <Text style={styles.btnText}>注文一覧へ</Text>
+      <Pressable
+        style={styles.btn}
+        onPress={() => {
+          navigated.current = true;
+          if (params.orderId) {
+            router.replace(`/order/detail?id=${String(params.orderId)}`);
+          } else {
+            router.replace("/(tabs)/orders");
+          }
+        }}
+      >
+        <Text style={styles.btnText}>{params.orderId ? "注文詳細へ" : "注文一覧へ"}</Text>
       </Pressable>
     </View>
   );
@@ -71,4 +99,3 @@ const styles = StyleSheet.create({
   btn: { marginTop: 8, backgroundColor: "#2563eb", borderRadius: 12, alignItems: "center", paddingVertical: 13 },
   btnText: { color: "#fff", fontWeight: "700" },
 });
-

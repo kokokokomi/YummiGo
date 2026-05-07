@@ -14,8 +14,24 @@ http.interceptors.request.use(async (config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  if (__DEV__) {
+    const fullUrl = `${config.baseURL || ""}${config.url || ""}`;
+    console.log("[HTTP] request:", config.method?.toUpperCase(), fullUrl);
+  }
   return config;
 });
+
+http.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    if (__DEV__) {
+      const req = error?.config;
+      const fullUrl = `${req?.baseURL || ""}${req?.url || ""}`;
+      console.log("[HTTP] error:", fullUrl, error?.message);
+    }
+    return Promise.reject(error);
+  }
+);
 
 export async function apiGet<T>(url: string, params?: Record<string, unknown>) {
   const { data } = await http.get<ApiResult<T>>(url, { params });

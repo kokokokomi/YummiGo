@@ -49,7 +49,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const totalAmount = useMemo(
-    () => items.reduce((sum, item) => sum + Number(item.amount) * Number(item.number), 0),
+    // amount 是购物车条目总价（后端已按数量计算），这里直接累加即可
+    () => items.reduce((sum, item) => sum + Number(item.amount), 0),
     [items]
   );
   const totalCount = useMemo(() => items.reduce((sum, item) => sum + Number(item.number), 0), [items]);

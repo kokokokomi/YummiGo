@@ -16,20 +16,44 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
-import { getDishCategories, getDishList, getDishWithFlavor } from "@/src/api/catalog";
-import type { Category, DishFlavor, DishVO } from "@/src/types/api";
+import {
+  getDishCategories,
+  getDishList,
+  getDishWithFlavor,
+  getSetmealById,
+  getSetmealCategories,
+  getSetmealDishItems,
+  getSetmealList,
+} from "@/src/api/catalog";
+import type { Category, DishFlavor, DishVO, Setmeal } from "@/src/types/api";
 import { useCart } from "@/src/state/cart";
+import { API_BASE_URL } from "@/src/config/env";
+
+type MenuKind = "dish" | "setmeal";
+type MenuItem = (DishVO | Setmeal) & { _kind: MenuKind };
+type SetmealDishDisplay = {
+  id: string;
+  name: string;
+  copies: number;
+  unitPrice: number;
+  image?: string;
+  description?: string;
+};
 
 export default function MenuScreen() {
   const { height: screenHeight } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [menuKind, setMenuKind] = useState<MenuKind>("dish");
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
-  const [dishes, setDishes] = useState<DishVO[]>([]);
+  const [menuList, setMenuList] = useState<MenuItem[]>([]);
   const [flavorVisible, setFlavorVisible] = useState(false);
   const [flavorDish, setFlavorDish] = useState<DishVO | null>(null);
   const [selectedFlavor, setSelectedFlavor] = useState<Record<string, string>>({});
+  const [setmealVisible, setSetmealVisible] = useState(false);
+  const [setmealDetail, setSetmealDetail] = useState<Setmeal | null>(null);
+  const [setmealDishList, setSetmealDishList] = useState<SetmealDishDisplay[]>([]);
   const [cartVisible, setCartVisible] = useState(false);
   const { items, totalAmount, totalCount, addItem, subItem, clearAll } = useCart();
   const cartModalHeight = useMemo(() => {
@@ -46,9 +70,27 @@ export default function MenuScreen() {
     () => categories.find((c) => String(c.id) === selectedCategoryId)?.name ?? "",
     [categories, selectedCategoryId]
   );
+  const getUnitPrice = (amount: number, count: number) => {
+    const n = Number(count) || 1;
+    return Number(amount) / n;
+  };
+  const resolveImage = (path?: string) => {
+    if (!path) return "";
+    if (/^(https?:)?\/\//.test(path) || path.startsWith("data:")) return path;
+    return `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+  };
+  const getSetmealOriginalPrice = (setmeal: Setmeal | null) => {
+    if (setmealDishList.length > 0) {
+      return setmealDishList.reduce((sum, dish) => sum + Number(dish.unitPrice || 0) * Number(dish.copies || 0), 0);
+    }
+    if (!setmeal?.setmealDishes?.length) return Number(setmeal?.price || 0);
+    return setmeal.setmealDishes.reduce((sum, dish) => {
+      return sum + Number(dish.price || 0) * Number(dish.copies || 0);
+    }, 0);
+  };
 
-  const loadCategories = async () => {
-    const list = await getDishCategories();
+  const loadCategories = async (kind: MenuKind) => {
+    const list = kind === "dish" ? await getDishCategories() : await getSetmealCategories();
     setCategories(list);
     if (list.length > 0) {
       setSelectedCategoryId(String(list[0].id));
@@ -57,23 +99,28 @@ export default function MenuScreen() {
     return "";
   };
 
-  const loadDishes = async (categoryId: string) => {
+  const loadMenus = async (kind: MenuKind, categoryId: string) => {
     if (!categoryId) return;
-    const list = await getDishList(categoryId);
-    setDishes(list);
+    if (kind === "dish") {
+      const list = await getDishList(categoryId);
+      setMenuList((list || []).map((item) => ({ ...item, _kind: "dish" })));
+      return;
+    }
+    const list = await getSetmealList(categoryId);
+    setMenuList((list || []).map((item) => ({ ...item, _kind: "setmeal" })));
   };
 
-  const bootstrap = useCallback(async () => {
+  const bootstrap = useCallback(async (kind: MenuKind = menuKind) => {
     setLoading(true);
     try {
-      const categoryId = await loadCategories();
-      await loadDishes(categoryId);
+      const categoryId = await loadCategories(kind);
+      await loadMenus(kind, categoryId);
     } catch (e: any) {
       Alert.alert("エラー", e?.message || "データ取得に失敗しました");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [menuKind]);
 
   useEffect(() => {
     bootstrap();
@@ -91,13 +138,22 @@ export default function MenuScreen() {
   const onSelectCategory = async (categoryId: string) => {
     setSelectedCategoryId(categoryId);
     try {
-      await loadDishes(categoryId);
+      await loadMenus(menuKind, categoryId);
     } catch (e: any) {
       Alert.alert("エラー", e?.message || "メニュー取得に失敗しました");
     }
   };
 
-  const onAddDish = async (dish: DishVO) => {
+  const onAddMenu = async (item: MenuItem) => {
+    if (item._kind === "setmeal") {
+      try {
+        await addItem({ setmealId: String(item.id) });
+      } catch (e: any) {
+        Alert.alert("エラー", e?.message || "カート追加に失敗しました");
+      }
+      return;
+    }
+    const dish = item as DishVO;
     try {
       const detail = await getDishWithFlavor(String(dish.id));
       const flavors = detail?.flavors || [];
@@ -150,6 +206,59 @@ export default function MenuScreen() {
     }
   };
 
+  const onOpenSetmealDetail = async (setmeal: Setmeal) => {
+    setSetmealDetail(setmeal);
+    setSetmealVisible(true);
+    setSetmealDishList([]);
+    try {
+      const safeSetmealId = String(setmeal.id).trim();
+      const [dishItems, setmealFull] = await Promise.all([
+        getSetmealDishItems(safeSetmealId),
+        getSetmealById(safeSetmealId).catch(() => null),
+      ]);
+      const setmealConfigDishes = (setmealFull?.setmealDishes?.length ? setmealFull.setmealDishes : setmeal.setmealDishes) || [];
+      const normalizeName = (name?: string) => String(name || "").trim().toLowerCase();
+      const detailByDishId = new Map((dishItems || []).map((dish) => [String(dish.dishId || ""), dish]));
+      const detailByName = new Map((dishItems || []).map((dish) => [normalizeName(dish.name), dish]));
+      const seenKeys = new Set<string>();
+      // 以商家保存的套餐配置为唯一真源，避免 /setmeal/dish 返回重复时出现 a+a+b
+      const detailedFromConfig = setmealConfigDishes
+        .map((configDish, idx) => {
+          const dishIdKey = String(configDish.dishId || "").trim();
+          const nameKey = normalizeName(configDish.name);
+          const key = nameKey || dishIdKey || String(idx);
+          if (seenKeys.has(key)) return null;
+          seenKeys.add(key);
+          const matchedDetail =
+            detailByDishId.get(dishIdKey) || detailByName.get(nameKey);
+          return {
+            id: String(configDish.dishId || idx),
+            name: configDish.name,
+            copies: Number(configDish.copies || 1),
+            unitPrice: Number(configDish.price || 0),
+            image: matchedDetail?.image,
+            description: matchedDetail?.description,
+          } as SetmealDishDisplay;
+        })
+        .filter((item): item is SetmealDishDisplay => Boolean(item));
+      const detailedFallback = (dishItems || []).map((dish, idx) => ({
+        id: String(dish.dishId || idx),
+        name: dish.name,
+        copies: Number(dish.copies || 1),
+        unitPrice: Number(dish.price || 0),
+        image: dish.image,
+        description: dish.description,
+      })) as SetmealDishDisplay[];
+      setSetmealDishList(detailedFromConfig.length > 0 ? detailedFromConfig : detailedFallback);
+      if (setmealFull) {
+        setSetmealDetail(setmealFull);
+      }
+    } catch (e: any) {
+      setSetmealDishList([]);
+      Alert.alert("お知らせ", e?.message || "セット内訳の取得に失敗しました。基本情報のみ表示しています。");
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -160,6 +269,28 @@ export default function MenuScreen() {
 
   return (
     <View style={styles.page}>
+      <View style={styles.modeTabs}>
+        <Pressable
+          style={[styles.modeTab, menuKind === "dish" && styles.modeTabActive]}
+          onPress={async () => {
+            if (menuKind === "dish") return;
+            setMenuKind("dish");
+            await bootstrap("dish");
+          }}
+        >
+          <Text style={[styles.modeTabText, menuKind === "dish" && styles.modeTabTextActive]}>料理</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.modeTab, menuKind === "setmeal" && styles.modeTabActive]}
+          onPress={async () => {
+            if (menuKind === "setmeal") return;
+            setMenuKind("setmeal");
+            await bootstrap("setmeal");
+          }}
+        >
+          <Text style={[styles.modeTabText, menuKind === "setmeal" && styles.modeTabTextActive]}>セット</Text>
+        </Pressable>
+      </View>
       <View style={styles.categoryWrap}>
         <FlatList
           horizontal
@@ -180,26 +311,40 @@ export default function MenuScreen() {
         />
       </View>
 
-      <Text style={styles.sectionTitle}>{selectedCategoryName || "メニュー"}</Text>
+      <Text style={styles.sectionTitle}>{selectedCategoryName || (menuKind === "dish" ? "料理メニュー" : "セットメニュー")}</Text>
 
       <FlatList
-        data={dishes}
+        data={menuList}
         keyExtractor={(item) => String(item.id)}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         contentContainerStyle={[styles.listContent, { paddingBottom: 84 }]}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            {item.image ? <Image source={{ uri: item.image }} style={styles.image} /> : <View style={styles.imagePlaceholder} />}
+            {item.image ? <Image source={{ uri: resolveImage(item.image) }} style={styles.image} /> : <View style={styles.imagePlaceholder} />}
             <View style={styles.cardBody}>
-              <Text style={styles.name}>{item.name}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={styles.name}>{item.name}</Text>
+                {item._kind === "setmeal" && <Text style={styles.setmealTag}>セット</Text>}
+              </View>
               <Text style={styles.desc} numberOfLines={2}>
                 {item.description || "説明なし"}
               </Text>
               <View style={styles.footer}>
                 <Text style={styles.price}>¥{Number(item.price).toFixed(0)}</Text>
-                <Pressable style={styles.addBtn} onPress={() => onAddDish(item)}>
-                  <Text style={styles.addBtnText}>追加</Text>
-                </Pressable>
+                {item._kind === "setmeal" ? (
+                  <View style={styles.setmealActions}>
+                    <Pressable style={styles.detailBtn} onPress={() => onOpenSetmealDetail(item as Setmeal)}>
+                      <Text style={styles.detailBtnText}>詳細</Text>
+                    </Pressable>
+                    <Pressable style={styles.addBtn} onPress={() => onAddMenu(item)}>
+                      <Text style={styles.addBtnText}>追加</Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <Pressable style={styles.addBtn} onPress={() => onAddMenu(item)}>
+                    <Text style={styles.addBtnText}>追加</Text>
+                  </Pressable>
+                )}
               </View>
             </View>
           </View>
@@ -242,11 +387,11 @@ export default function MenuScreen() {
               contentContainerStyle={{ paddingBottom: 60 }}
               renderItem={({ item }) => (
                 <View style={styles.cartItem}>
-                  {item.image ? <Image source={{ uri: item.image }} style={styles.cartItemImage} /> : <View style={styles.cartItemImage} />}
+                  {item.image ? <Image source={{ uri: resolveImage(item.image) }} style={styles.cartItemImage} /> : <View style={styles.cartItemImage} />}
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cartItemName}>{item.name}</Text>
                     <Text style={styles.cartItemSub}>{item.dishFlavor || "-"}</Text>
-                    <Text style={styles.cartItemPrice}>¥{Number(item.amount).toFixed(0)}</Text>
+                    <Text style={styles.cartItemPrice}>¥{getUnitPrice(Number(item.amount), Number(item.number)).toFixed(0)}</Text>
                   </View>
                   <View style={styles.qtyActions}>
                     <Pressable
@@ -343,12 +488,87 @@ export default function MenuScreen() {
           </View>
         </View>
       </Modal>
+      <Modal visible={setmealVisible} transparent animationType="slide" onRequestClose={() => setSetmealVisible(false)}>
+        <View style={styles.modalMask}>
+          <View style={styles.modalCard}>
+            {setmealDetail?.image ? (
+              <Image source={{ uri: resolveImage(setmealDetail.image) }} style={styles.setmealHero} />
+            ) : null}
+            <Text style={styles.modalTitle}>セット詳細</Text>
+            <Text style={styles.modalDishName}>{setmealDetail?.name}</Text>
+            <Text style={styles.desc}>{setmealDetail?.description || "説明なし"}</Text>
+            <View style={styles.discountBox}>
+              <Text style={styles.discountLine}>セット価格: ¥{Number(setmealDetail?.price || 0).toFixed(0)}</Text>
+              <Text style={styles.discountLine}>通常合計: ¥{getSetmealOriginalPrice(setmealDetail).toFixed(0)}</Text>
+              <Text style={styles.discountSave}>
+                お得: ¥{Math.max(0, getSetmealOriginalPrice(setmealDetail) - Number(setmealDetail?.price || 0)).toFixed(0)}
+              </Text>
+            </View>
+            <ScrollView style={{ maxHeight: 220 }}>
+              {setmealDishList.map((dish, idx) => (
+                <View key={`${dish.name}-${idx}`} style={styles.setmealDishCard}>
+                  {setmealDishList[idx]?.image ? (
+                    <Image source={{ uri: resolveImage(setmealDishList[idx]?.image) }} style={styles.setmealDishImage} />
+                  ) : (
+                    <View style={styles.setmealDishImage} />
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.setmealDishName}>{dish.name}</Text>
+                    <Text style={styles.setmealDishDesc} numberOfLines={2}>
+                      {dish.description || "説明はありません"}
+                    </Text>
+                    <View style={styles.setmealDishBottom}>
+                      <Text style={styles.setmealDishCopies}>x{dish.copies}</Text>
+                      <Text style={styles.setmealDishPrice}>¥{Number(dish.unitPrice).toFixed(0)}</Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+              {(setmealDishList.length === 0) && (
+                <Text style={styles.emptyText}>このセットの内訳はまだ設定されていません</Text>
+              )}
+            </ScrollView>
+            <View style={styles.modalActions}>
+              <Pressable style={[styles.modalBtn, styles.modalCancel]} onPress={() => setSetmealVisible(false)}>
+                <Text style={styles.modalCancelText}>閉じる</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, styles.modalConfirm]}
+                onPress={async () => {
+                  if (!setmealDetail) return;
+                  await onAddMenu({ ...setmealDetail, _kind: "setmeal" });
+                  setSetmealVisible(false);
+                }}
+              >
+                <Text style={styles.modalConfirmText}>カートに追加</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#f8fafc" },
+  modeTabs: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 4,
+    backgroundColor: "#fff",
+  },
+  modeTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: "#eef2ff",
+  },
+  modeTabActive: { backgroundColor: "#2563eb" },
+  modeTabText: { color: "#1f2937", fontWeight: "600" },
+  modeTabTextActive: { color: "#fff" },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   categoryWrap: {
     backgroundColor: "#fff",
@@ -371,27 +591,44 @@ const styles = StyleSheet.create({
   listContent: { paddingHorizontal: 12, paddingBottom: 24, gap: 12 },
   card: {
     backgroundColor: "#fff",
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: "#e2e8f0",
+    shadowColor: "#111827",
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
+    elevation: 4,
   },
   image: { width: "100%", height: 160, resizeMode: "cover" },
   imagePlaceholder: { width: "100%", height: 160, backgroundColor: "#e5e7eb" },
   cardBody: { padding: 12, gap: 8 },
   name: { fontSize: 16, fontWeight: "700", color: "#111827" },
+  setmealTag: {
+    fontSize: 11,
+    color: "#2563eb",
+    backgroundColor: "#dbeafe",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    fontWeight: "700",
+  },
   desc: { fontSize: 13, color: "#6b7280" },
   footer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 },
   price: { fontSize: 16, fontWeight: "700", color: "#dc2626" },
+  setmealActions: { flexDirection: "row", gap: 8 },
+  detailBtn: { backgroundColor: "#e5e7eb", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  detailBtnText: { color: "#1f2937", fontWeight: "700" },
   addBtn: { backgroundColor: "#2563eb", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
   addBtnText: { color: "#fff", fontWeight: "700" },
   cartBar: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
+    left: 10,
+    right: 10,
+    bottom: 8,
     backgroundColor: "#111827",
-    borderRadius: 0,
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
     flexDirection: "row",
@@ -478,6 +715,14 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
     padding: 16,
     paddingBottom: 22,
+    maxHeight: "88%",
+  },
+  setmealHero: {
+    width: "100%",
+    height: 150,
+    borderRadius: 12,
+    marginBottom: 10,
+    backgroundColor: "#e5e7eb",
   },
   modalTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
   modalDishName: { marginTop: 4, color: "#6b7280" },
@@ -498,4 +743,31 @@ const styles = StyleSheet.create({
   modalConfirm: { backgroundColor: "#2563eb" },
   modalCancelText: { color: "#374151", fontWeight: "700" },
   modalConfirmText: { color: "#fff", fontWeight: "700" },
+  discountBox: {
+    backgroundColor: "#fff7ed",
+    borderWidth: 1,
+    borderColor: "#fed7aa",
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 8,
+    gap: 4,
+  },
+  discountLine: { color: "#7c2d12", fontWeight: "600" },
+  discountSave: { color: "#dc2626", fontWeight: "800" },
+  setmealDishCard: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "flex-start",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 10,
+    padding: 8,
+    marginTop: 8,
+  },
+  setmealDishImage: { width: 56, height: 56, borderRadius: 8, backgroundColor: "#e5e7eb" },
+  setmealDishName: { color: "#111827", fontWeight: "700" },
+  setmealDishDesc: { color: "#6b7280", fontSize: 12, marginTop: 2 },
+  setmealDishBottom: { flexDirection: "row", justifyContent: "space-between", marginTop: 6 },
+  setmealDishCopies: { color: "#2563eb", fontWeight: "700" },
+  setmealDishPrice: { color: "#dc2626", fontWeight: "700" },
 });

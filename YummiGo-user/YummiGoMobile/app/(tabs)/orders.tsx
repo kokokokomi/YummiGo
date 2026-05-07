@@ -3,11 +3,13 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { router } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { getOrderPage } from "@/src/api/order";
 import type { OrderVO } from "@/src/types/api";
 
@@ -45,10 +47,53 @@ export default function OrdersScreen() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState(0);
   const [list, setList] = useState<OrderVO[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [nowMs, setNowMs] = useState(Date.now());
   const allListRef = useRef<OrderVO[]>([]);
 
-  const fetchList = useCallback(async (nextStatus = 0) => {
-    setLoading(true);
+  const parseOrderTimeMs = (raw?: string) => {
+    if (!raw) return NaN;
+    const text = String(raw).trim();
+    if (!text) return NaN;
+    const unix = Number(text);
+    if (Number.isFinite(unix) && unix > 0) {
+      return unix > 1e12 ? unix : unix * 1000;
+    }
+    const normalized = text.replace(" ", "T");
+    const direct = new Date(normalized).getTime();
+    if (!Number.isNaN(direct)) return direct;
+    return NaN;
+  };
+
+  const resolveOrderStartMs = (raw?: string) => {
+    if (!raw) return NaN;
+    const text = String(raw).trim();
+    if (!text) return NaN;
+    const normalized = text.replace(" ", "T");
+    const now = Date.now();
+    const windowMs = 15 * 60 * 1000;
+    const candidates = [new Date(normalized).getTime(), new Date(`${normalized}Z`).getTime()].filter((v) => !Number.isNaN(v));
+    if (candidates.length === 0) return parseOrderTimeMs(raw);
+    // 中文注释：优先命中 15 分钟支付窗口，避免服务端时间字符串缺少时区导致倒计时恒为 0
+    const inWindow = candidates.filter((ts) => now >= ts && now - ts <= windowMs);
+    if (inWindow.length > 0) return Math.max(...inWindow);
+    const notFuture = candidates.filter((ts) => ts <= now + 60 * 1000);
+    if (notFuture.length > 0) return Math.max(...notFuture);
+    return Math.min(...candidates);
+  };
+
+  const getRemainingText = (item: OrderVO) => {
+    if (item.status !== 1 || item.payStatus === 1) return "";
+    const createdMs = resolveOrderStartMs(item.orderTime);
+    if (Number.isNaN(createdMs)) return "残り時間: --:--";
+    const left = Math.max(0, Math.floor((createdMs + 15 * 60 * 1000 - nowMs) / 1000));
+    const m = Math.floor(left / 60);
+    const s = left % 60;
+    return `残り時間: ${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  };
+
+  const fetchList = useCallback(async (nextStatus = 0, silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       if (nextStatus === 0) {
@@ -71,7 +116,7 @@ export default function OrdersScreen() {
       setError(e?.message || "注文取得に失敗しました");
       setList([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -80,9 +125,32 @@ export default function OrdersScreen() {
     fetchList(0);
   }, [fetchList]);
 
+  useFocusEffect(
+    useCallback(() => {
+      // 进入订单页时立即刷新一次，并在前台定期刷新状态
+      fetchList(status, true);
+      const secondTimer = setInterval(() => {
+        setNowMs(Date.now());
+      }, 1000);
+      const timer = setInterval(() => {
+        fetchList(status, true);
+      }, 15000);
+      return () => {
+        clearInterval(timer);
+        clearInterval(secondTimer);
+      };
+    }, [fetchList, status])
+  );
+
   const onChangeStatus = async (next: number) => {
     setStatus(next);
     await fetchList(next);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchList(status, true);
+    setRefreshing(false);
   };
 
   if (loading) {
@@ -116,8 +184,18 @@ export default function OrdersScreen() {
         data={list}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         renderItem={({ item }) => (
-          <Pressable style={styles.card} onPress={() => router.push(`/order/detail?id=${item.id}`)}>
+          <Pressable
+            style={styles.card}
+            onPress={() => {
+              if (item.status === 1 && item.payStatus !== 1) {
+                router.push(`/order/detail?id=${item.id}`);
+                return;
+              }
+              router.push(`/order/detail?id=${item.id}`);
+            }}
+          >
             <View style={styles.row}>
               <Text style={styles.orderNo}>注文番号: {item.number}</Text>
               <Text style={styles.status}>{statusText(item.status)}</Text>
@@ -125,6 +203,9 @@ export default function OrdersScreen() {
             <Text style={styles.line}>合計: ¥{Number(item.amount).toFixed(0)}</Text>
             <Text style={styles.line}>住所: {item.snapshotAddress || "-"}</Text>
             <Text style={styles.line}>時間: {item.orderTime || "-"}</Text>
+            {item.status === 1 && item.payStatus !== 1 && (
+              <Text style={styles.countdown}>{getRemainingText(item)}</Text>
+            )}
           </Pressable>
         )}
         ListEmptyComponent={
@@ -164,6 +245,7 @@ const styles = StyleSheet.create({
   orderNo: { color: "#111827", fontWeight: "700" },
   status: { color: "#2563eb", fontWeight: "700" },
   line: { color: "#4b5563", fontSize: 13 },
+  countdown: { color: "#dc2626", fontWeight: "700", fontSize: 13, marginTop: 2 },
   empty: { marginTop: 36, textAlign: "center", color: "#9ca3af" },
   retryBtn: { marginTop: 10, alignSelf: "center", backgroundColor: "#2563eb", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
   retryText: { color: "#fff", fontWeight: "700" },

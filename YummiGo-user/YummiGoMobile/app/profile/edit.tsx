@@ -55,7 +55,7 @@ export default function ProfileEditScreen() {
       setSaving(true);
       await updateUserInfo({ name, avatar: avatar || undefined });
       await reloadProfile();
-      Alert.alert("成功", "個人情報を更新しました");
+      Alert.alert("完了", "個人情報を更新しました");
     } catch (e: any) {
       Alert.alert("エラー", e?.message || "更新に失敗しました");
     } finally {

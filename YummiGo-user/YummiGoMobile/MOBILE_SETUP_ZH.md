@@ -70,6 +70,12 @@ sy:
 export EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID="你的GoogleWebClientID"
 ```
 
+### 3.4 授权错误（invalid_request / redirect_uri）排查
+
+- 代码里使用 `AuthSession.makeRedirectUri({ useProxy: true })` 作为 **redirect_uri**（Expo Go 为代理域名）。
+- 在 Google Cloud Console → OAuth 客户端（**Web 类型**）→「已获授权的重定向 URI」中，**必须添加与运行时完全一致的 redirect_uri**（可在 App 里用登录失败弹窗中打印的 `redirect_uri` 复制粘贴）。
+- iOS 真机/独立客户端还需配置 **iOS Client ID**（`EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`），并在 Google Console 为 iOS 类型客户端配置 Bundle ID。
+
 ## 4. Stripe 沙盒联调（核心流程）
 
 ### 4.1 后端配置
@@ -79,17 +85,23 @@ export EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID="你的GoogleWebClientID"
 - `sy.stripe.apiKey=sk_test_xxx`
 - `sy.stripe.webhookSecret=whsec_xxx`
 
-### 4.2 本地 Webhook 转发
+### 4.2 本地 Webhook 转发（不要用「本机局域网 IP」填 Stripe Dashboard）
+
+**Stripe 云端无法访问你家里的 `http://192.168.x.x:8080`**，所以在 Dashboard 里填内网地址，Webhook **永远不会成功**。本地开发请二选一：
+
+- **推荐**：Stripe CLI 转发（不依赖公网）：
 
 ```bash
-stripe listen --forward-to localhost:8080/user/stripe/webhook
+stripe listen --forward-to http://localhost:8080/user/stripe/webhook
 ```
 
-将 CLI 输出的 `whsec_xxx` 填到后端配置后重启。
+将 CLI 打印的 **`whsec_...`** 写入后端 `sy.stripe.webhookSecret`，与 Dashboard 里手动创建的 Endpoint **无关**（CLI 自带签名密钥）。
+
+- **或**：用 ngrok / cloudflared 暴露 `https://xxx.ngrok.io` → 再填 `https://xxx.ngrok.io/user/stripe/webhook`，并在 Dashboard 复制对应 `whsec`。
 
 ### 4.3 移动端支付流程
 
-1. 在卡ート页点击 `支払う`。
+1. メニューでカートに追加し、注文確認から決済へ。
 2. 前端先调 `/order/submit` 创建订单。
 3. 再调 `/order/payment` 获取 `checkoutUrl`。
 4. `WebBrowser.openBrowserAsync(checkoutUrl)` 拉起 Stripe Checkout。

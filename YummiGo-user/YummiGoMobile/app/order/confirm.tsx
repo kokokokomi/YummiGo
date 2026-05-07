@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -21,15 +21,17 @@ import * as Location from "expo-location";
 import { router } from "expo-router";
 
 import { createAddress, getAddressList, getDefaultAddress, reverseGeocode, setDefaultAddress } from "@/src/api/address";
+import { getCartList } from "@/src/api/cart";
 import { createOrderPayment, submitOrder } from "@/src/api/order";
 import { API_BASE_URL } from "@/src/config/env";
+import { normalizeMajorAmount, toMinorUnit } from "@/src/lib/currency";
 import { useAuth } from "@/src/state/auth";
 import { useCart } from "@/src/state/cart";
 import type { Address } from "@/src/types/api";
 
 export default function OrderConfirmScreen() {
   const { profile } = useAuth();
-  const { items, totalAmount, clearAll } = useCart();
+  const { items, totalAmount, refresh } = useCart();
   const [address, setAddress] = useState<Address | null>(null);
   const [addressList, setAddressList] = useState<Address[]>([]);
   const [addressVisible, setAddressVisible] = useState(false);
@@ -37,6 +39,9 @@ export default function OrderConfirmScreen() {
   const [remark, setRemark] = useState("");
   const [needTableware, setNeedTableware] = useState(true);
   const [tablewareNumber, setTablewareNumber] = useState(0);
+  const [deliveryMode, setDeliveryMode] = useState<"immediate" | "scheduled">("immediate");
+  const [deliveryTimePickerVisible, setDeliveryTimePickerVisible] = useState(false);
+  const [scheduledDeliveryTime, setScheduledDeliveryTime] = useState<string>("");
 
   const [newAddressVisible, setNewAddressVisible] = useState(false);
   const [pickerVisible, setPickerVisible] = useState<null | "pref" | "city" | "town">(null);
@@ -45,6 +50,7 @@ export default function OrderConfirmScreen() {
   const [cities, setCities] = useState<string[]>([]);
   const [towns, setTowns] = useState<{ town: string; postal: string }[]>([]);
   const [locationHint, setLocationHint] = useState("");
+  const aliveRef = useRef(true);
   const [form, setForm] = useState({
     consignee: "",
     phone: "",
@@ -57,6 +63,38 @@ export default function OrderConfirmScreen() {
   });
 
   const itemCount = useMemo(() => items.reduce((s, i) => s + i.number, 0), [items]);
+  const deliveryFee = 0;
+  const orderTotal = totalAmount + deliveryFee;
+  const getUnitPrice = (amount: number, count: number) => {
+    const n = Number(count) || 1;
+    return Number(amount) / n;
+  };
+  const toBackendDateTime = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+    const ss = String(date.getSeconds()).padStart(2, "0");
+    return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+  };
+  const deliveryTimeOptions = useMemo(() => {
+    const options: { value: string; label: string }[] = [];
+    const now = new Date();
+    const base = new Date(now.getTime() + 30 * 60 * 1000);
+    // 15 分刻みに丸める
+    base.setMinutes(Math.ceil(base.getMinutes() / 15) * 15, 0, 0);
+    for (let i = 0; i < 18; i += 1) {
+      const slot = new Date(base.getTime() + i * 15 * 60 * 1000);
+      const hh = String(slot.getHours()).padStart(2, "0");
+      const mm = String(slot.getMinutes()).padStart(2, "0");
+      options.push({
+        value: toBackendDateTime(slot),
+        label: `${hh}:${mm}`,
+      });
+    }
+    return options;
+  }, []);
   const resolveImage = (img?: string) => {
     if (!img) return "";
     if (img.startsWith("http://") || img.startsWith("https://")) return img;
@@ -76,10 +114,17 @@ export default function OrderConfirmScreen() {
 
   useEffect(() => {
     loadAddress();
+    refresh().catch(() => {});
     fetch("https://geoapi.heartrails.com/api/json?method=getPrefectures")
       .then((r) => r.json())
       .then((d) => setPrefectures((d?.response?.prefecture || []) as string[]))
       .catch(() => {});
+  }, [refresh]);
+
+  useEffect(() => {
+    return () => {
+      aliveRef.current = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -176,45 +221,78 @@ export default function OrderConfirmScreen() {
   };
 
   const onSubmit = async () => {
-    if (items.length === 0) {
-      Alert.alert("カート空", "商品を選んでください");
-      return;
-    }
     if (!address?.id) {
       Alert.alert("住所未設定", "住所を設定してください");
       return;
     }
+    if (items.length === 0) {
+      Alert.alert("カート空", "商品を選んでください");
+      return;
+    }
     setSubmitting(true);
     try {
+      let latestItems = items;
+      try {
+        const serverItems = await getCartList();
+        if (serverItems && serverItems.length > 0) {
+          latestItems = serverItems;
+        }
+      } catch {
+        // ignore and fallback to local cart snapshot
+      }
+      const latestTotal = latestItems.reduce((sum, it) => sum + Number(it.amount || 0), 0);
+      if (latestTotal <= 0) {
+        Alert.alert("カート空", "商品を選んでください");
+        return;
+      }
+      const currency = "jpy";
+      const normalizedTotal = normalizeMajorAmount(latestTotal, currency);
+      const normalizedOrderTotal = normalizeMajorAmount(latestTotal + deliveryFee, currency);
+      const finalScheduledTime =
+        deliveryMode === "scheduled"
+          ? (scheduledDeliveryTime || deliveryTimeOptions[0]?.value)
+          : undefined;
       const order = await submitOrder({
         addressBookId: String(address.id),
         payMethod: 2,
         remark: remark || undefined,
-        deliveryStatus: 1,
+        deliveryStatus: deliveryMode === "immediate" ? 1 : 0,
         tablewareNumber: needTableware ? tablewareNumber : -1,
         tablewareStatus: needTableware ? 0 : 1,
         packAmount: 0,
-        amount: Number(totalAmount.toFixed(2)),
+        amount: normalizedOrderTotal,
+        estimatedDeliveryTime: finalScheduledTime,
       });
+      // 中文注释：下单成功后同步购物车，但不要阻断后续拉起 Stripe
+      refresh().catch(() => {});
 
-      const successUrl = Linking.createURL(`/payment/success?orderId=${order.id}`);
-      const cancelUrl = Linking.createURL(`/payment/cancel?orderId=${order.id}`);
+      const countdownStart = Date.now();
+      const successUrl = Linking.createURL(`/payment/success?orderId=${order.id}&countdownStart=${countdownStart}`);
+      const cancelUrl = Linking.createURL(`/payment/cancel?orderId=${order.id}&countdownStart=${countdownStart}`);
 
-      const payment = await createOrderPayment({
-        payMethod: 2,
-        orderId: String(order.id),
-        orderNumber: order.orderNumber,
-        currency: "jpy",
-        amountInCents: Math.round(totalAmount * 100),
-        successUrl,
-        cancelUrl,
-        customerEmail: profile?.email,
-      });
+      try {
+        const payment = await createOrderPayment({
+          payMethod: 2,
+          orderId: String(order.id),
+          orderNumber: order.orderNumber,
+          currency,
+          amountInCents: toMinorUnit(normalizedOrderTotal, currency),
+          successUrl,
+          cancelUrl,
+          customerEmail: profile?.email,
+        });
 
-      await WebBrowser.openBrowserAsync(payment.checkoutUrl);
-      await clearAll();
-      router.replace("/(tabs)/orders");
+        // 中文注释：如果用户从支付页手动返回且未触发深链接，兜底跳转到订单详情页展示倒计时
+        await WebBrowser.openBrowserAsync(payment.checkoutUrl);
+        if (aliveRef.current) {
+          router.replace(`/order/detail?id=${order.id}&countdownStart=${countdownStart}`);
+        }
+      } catch (e: any) {
+        Alert.alert("決済開始失敗", e?.message || "支払いページの作成に失敗しました。注文詳細から再度お試しください。");
+        router.replace(`/order/detail?id=${order.id}&countdownStart=${countdownStart}`);
+      }
     } catch (e: any) {
+      refresh().catch(() => {});
       Alert.alert("決済エラー", e?.message || "支払いに失敗しました");
     } finally {
       setSubmitting(false);
@@ -260,7 +338,7 @@ export default function OrderConfirmScreen() {
                 <Text style={styles.addr}>{item.dishFlavor || "-"}</Text>
               </View>
               <Text style={styles.addr}>x{item.number}</Text>
-              <Text style={styles.price}>¥{Number(item.amount).toFixed(0)}</Text>
+              <Text style={styles.price}>¥{getUnitPrice(Number(item.amount), Number(item.number)).toFixed(0)}</Text>
             </View>
           )}
         />
@@ -268,6 +346,43 @@ export default function OrderConfirmScreen() {
           <Text style={styles.addr}>商品数: {itemCount}</Text>
           <Text style={styles.total}>合計: ¥{totalAmount.toFixed(0)}</Text>
         </View>
+        <View style={styles.summaryRow}>
+          <Text style={styles.addr}>配達料</Text>
+          <Text style={styles.addr}>¥{deliveryFee.toFixed(0)}</Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <Text style={styles.addr}>支払い合計</Text>
+          <Text style={styles.total}>¥{orderTotal.toFixed(0)}</Text>
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.title}>お届け予定</Text>
+        <View style={styles.row}>
+          <Pressable
+            style={[styles.chip, deliveryMode === "immediate" && styles.chipActive]}
+            onPress={() => setDeliveryMode("immediate")}
+          >
+            <Text style={[styles.chipText, deliveryMode === "immediate" && styles.chipTextActive]}>今すぐ配達</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.chip, deliveryMode === "scheduled" && styles.chipActive]}
+            onPress={() => setDeliveryMode("scheduled")}
+          >
+            <Text style={[styles.chipText, deliveryMode === "scheduled" && styles.chipTextActive]}>時間を指定</Text>
+          </Pressable>
+        </View>
+        <Pressable
+          style={[styles.input, deliveryMode !== "scheduled" && { opacity: 0.45 }]}
+          disabled={deliveryMode !== "scheduled"}
+          onPress={() => setDeliveryTimePickerVisible(true)}
+        >
+          <Text>
+            {deliveryMode === "scheduled"
+              ? `指定時間: ${(deliveryTimeOptions.find((x) => x.value === scheduledDeliveryTime)?.label || deliveryTimeOptions[0]?.label || "--:--")}`
+              : "今すぐ配達"}
+          </Text>
+        </Pressable>
       </View>
 
       <View style={styles.card}>
@@ -305,10 +420,10 @@ export default function OrderConfirmScreen() {
           <View style={styles.bottomBar}>
             <View style={styles.totalPanel}>
               <Text style={styles.totalLabel}>合計</Text>
-              <Text style={styles.totalValue}>¥{totalAmount.toFixed(0)}</Text>
+              <Text style={styles.totalValue}>¥{orderTotal.toFixed(0)}</Text>
             </View>
             <Pressable style={[styles.submitPanel, submitting && { opacity: 0.7 }]} disabled={submitting} onPress={onSubmit}>
-              <Text style={styles.submitText}>{submitting ? "処理中..." : "提交订单"}</Text>
+              <Text style={styles.submitText}>{submitting ? "処理中..." : "注文を確定"}</Text>
             </Pressable>
           </View>
         </View>
@@ -464,6 +579,30 @@ export default function OrderConfirmScreen() {
                 </Pressable>
               )}
             />
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={deliveryTimePickerVisible} transparent animationType="slide" onRequestClose={() => setDeliveryTimePickerVisible(false)}>
+        <View style={styles.mask}>
+          <View style={styles.modal}>
+            <Text style={styles.title}>お届け時間を選択</Text>
+            <ScrollView style={{ maxHeight: 260 }}>
+              {deliveryTimeOptions.map((option) => {
+                const active = (scheduledDeliveryTime || deliveryTimeOptions[0]?.value) === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    style={[styles.addrItem, active && { borderColor: "#2563eb", backgroundColor: "#eff6ff" }]}
+                    onPress={() => setScheduledDeliveryTime(option.value)}
+                  >
+                    <Text style={{ color: active ? "#1d4ed8" : "#111827", fontWeight: active ? "700" : "500" }}>{option.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <Pressable style={styles.payBtn} onPress={() => setDeliveryTimePickerVisible(false)}>
+              <Text style={styles.payText}>決定</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>

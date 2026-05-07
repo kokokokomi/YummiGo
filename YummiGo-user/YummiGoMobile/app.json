@@ -4,8 +4,8 @@
     "slug": "YummiGoMobile",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme":"yummigo",
     "icon": "./assets/images/icon.png",
-    "scheme": "yummigomobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -34,10 +34,24 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3c55d2cc-49e3-4185-a050-0cdd83305afc"
+      }
+    },
+    "owner": "kokokokomi",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/3c55d2cc-49e3-4185-a050-0cdd83305afc"
     }
   }
 }

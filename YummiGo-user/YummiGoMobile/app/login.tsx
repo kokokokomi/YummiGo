@@ -19,6 +19,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   const onSubmit = async () => {
     if (!email || !password) {
@@ -33,6 +34,16 @@ export default function LoginScreen() {
       Alert.alert("ログイン失敗", e?.message || "ログインに失敗しました");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const onGoogleSubmit = async () => {
+    if (googleSubmitting) return;
+    setGoogleSubmitting(true);
+    try {
+      await loginWithGoogle();
+    } finally {
+      setGoogleSubmitting(false);
     }
   };
 
@@ -65,8 +76,14 @@ export default function LoginScreen() {
         <Text style={styles.buttonText}>{submitting ? "処理中..." : "ログイン"}</Text>
       </Pressable>
 
-      <Pressable style={[styles.button, styles.googleButton]} onPress={loginWithGoogle}>
-        <Text style={[styles.buttonText, styles.googleButtonText]}>Googleでログイン</Text>
+      <Pressable
+        style={[styles.button, styles.googleButton, googleSubmitting && styles.buttonDisabled]}
+        onPress={onGoogleSubmit}
+        disabled={googleSubmitting}
+      >
+        <Text style={[styles.buttonText, styles.googleButtonText]}>
+          {googleSubmitting ? "Google認証を起動中..." : "Googleでログイン"}
+        </Text>
       </Pressable>
 
       <Text style={styles.tip}>注: 画面文言は日本語、コード注释は中文で統一しています。</Text>

@@ -33,11 +33,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const useProxy = Platform.OS !== "web";
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: "yummigo",
+    useProxy,
+  });
+
   const [request, response, promptAsync] = Google.useAuthRequest({
     expoClientId: GOOGLE_EXPO_CLIENT_ID || GOOGLE_WEB_CLIENT_ID || undefined,
     webClientId: GOOGLE_WEB_CLIENT_ID || undefined,
     iosClientId: GOOGLE_IOS_CLIENT_ID || GOOGLE_WEB_CLIENT_ID || undefined,
     androidClientId: GOOGLE_ANDROID_CLIENT_ID || GOOGLE_WEB_CLIENT_ID || undefined,
+    redirectUri,
     responseType: "id_token",
     scopes: ["openid", "profile", "email"],
   });
@@ -84,21 +91,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(me);
       },
       async loginWithGoogle() {
-        if (!request) return;
+        if (!request) {
+          Alert.alert("Googleログイン準備中", "認証リクエストの初期化中です。1秒後にもう一度お試しください。");
+          return;
+        }
         if (!GOOGLE_WEB_CLIENT_ID && !GOOGLE_EXPO_CLIENT_ID && !GOOGLE_IOS_CLIENT_ID && !GOOGLE_ANDROID_CLIENT_ID) {
           Alert.alert("Google設定不足", "Google Client ID を設定してください。");
           return;
         }
         try {
-          await promptAsync({ useProxy: true } as any);
+          await promptAsync({ useProxy } as any);
         } catch (e: any) {
-          const hintRedirect = AuthSession.makeRedirectUri({ useProxy: true });
           Alert.alert(
             "Googleログインエラー",
             [
               e?.message || "Google OAuth の開始に失敗しました。",
               `platform: ${Platform.OS}`,
-              `redirect_uri: ${hintRedirect}`,
+              `redirect_uri: ${redirectUri}`,
               "Google Cloud Console の OAuth 設定で、Client ID と redirect URI が一致しているか確認してください。",
             ].join("\n")
           );
@@ -115,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(me);
       },
     }),
-    [token, profile, loading, request, promptAsync]
+    [token, profile, loading, request, promptAsync, redirectUri, useProxy]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

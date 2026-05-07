@@ -48,7 +48,11 @@ export function getOrderById(id: string) {
   return apiGet<OrderVO>(`/order/${id}`);
 }
 
-export function cancelOrder(id: string, cancelReason = "用户取消") {
+export function cancelOrder(id: string, cancelReason = "ユーザー都合キャンセル") {
   return apiPut<void>(`/order/cancel/${id}`, { cancelReason } as any);
+}
+
+export function remindOrder(id: string) {
+  return apiPost<void>(`/order/remind/${id}`, {});
 }
 
