@@ -58,7 +58,7 @@
               </template>
             </el-table-column>
             <el-table-column label="アクション" align="center"
-              :class-name="dialogOrderStatus === 0 ? 'operate' : 'otherOperate'" min-width="120px">
+              :class-name="dialogOrderStatus === 0 ? 'operate' : 'otherOperate'" min-width="132px">
               <template #default="scope">
                 <div class="before">
                   <el-button v-if="scope.row.status === 2" type="primary" link @click="orderAccept(scope.row)">
@@ -242,6 +242,9 @@ import {
 } from '@/api/order'
 import type { Order, OrderVO } from '@/types/order'
 import { ElMessage } from 'element-plus'
+const emit = defineEmits<{
+  (e: 'getOrderListBy3Status'): void
+}>()
 
 /** ダイアログタイトル・理由比較用（注文ページと整合） */
 const DLG_CANCEL = 'キャンセル'
@@ -323,11 +326,12 @@ const orderAccept = async (row: any) => {
   orderId.value = row.id;
   dialogOrderStatus.value = row.status;
   const res = await orderAcceptAPI({ id: orderId.value })
-  if (res.data.code === 0) {
+  if (res.data.code === 1) {
     console.log('操作成功')
     orderId.value = ''
     dialogVisible.value = false
     await getOrderListData(status.value)
+    emit('getOrderListBy3Status')
     ElMessage.success('注文を受付ました')
   } else {
     throw new Error(res.data.msg)
@@ -366,11 +370,12 @@ const confirmCancel = async () => {
   };
   // 请求
   const { data: res } = await action(payload)
-  if (res.code === 0) {
+  if (res.code === 1) {
     cancelDialogVisible.value = false;
     orderId.value = '';
     ElMessage.success(cancelDialogTitle.value === DLG_CANCEL ? 'キャンセルしました' : '拒否しました')
-    getOrderListData(status.value);
+    await getOrderListData(status.value);
+    emit('getOrderListBy3Status')
   } else {
     throw new Error(res.msg)
   }
@@ -382,11 +387,12 @@ const deliveryOrComplete = async (status1: number, id: string | number) => {
   const params = { status1, id };
 
   const { data: res } = await action(params)
-  if (res.code === 0) {
+  if (res.code === 1) {
     orderId.value = ''
     dialogVisible.value = false
     ElMessage.success(`${status1 === 3 ? '配達に回しました' : '注文を完了しました'}`)
-    getOrderListData(status.value)
+    await getOrderListData(status.value)
+    emit('getOrderListBy3Status')
   } else {
     // Handle error
   }
@@ -453,13 +459,22 @@ onMounted(() => {
   .btn_box {
     display: flex;
     align-items: center;
+    justify-content: center;
     height: 100%;
 
     .before,
-    .middle,
     .after {
       width: 40px;
       margin: 2px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .middle {
+      width: 54px;
+      margin: 2px 4px;
+      text-align: center;
+      white-space: nowrap;
     }
   }
   .before,

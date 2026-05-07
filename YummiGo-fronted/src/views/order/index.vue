@@ -144,6 +144,17 @@ const getItemsTotal = (order?: OrderVO | null) => {
   return (order.orderDetailList || []).reduce((sum, detail) => sum + toAmount(detail.amount), 0)
 }
 const resolveImageUrl = resolveImageUrlByRule
+const getEstimatedDeliveryLabel = (order?: any) => {
+  if (!order) return '-'
+  if (order.deliveryStatus === 1) return '即時配達'
+  return order.estimatedDeliveryTime || '-'
+}
+const getTablewareLabel = (order?: any) => {
+  if (!order) return '-'
+  if (order.tablewareStatus === 1 || order.tablewareNumber === -1) return '不要'
+  if (order.tablewareNumber === 0) return '人数分'
+  return order.tablewareNumber ?? '-'
+}
 
 // 初始化时需要分页查询，展示所有订单
 const init = async (tabStatus: number = 0, search?: boolean) => {
@@ -446,7 +457,11 @@ onMounted(async () => {
           class-name="cancelReason" :min-width="[6].includes(orderStatus) ? 80 : 'auto'" />
         <el-table-column v-if="[5].includes(orderStatus)" key="deliveryTime" prop="deliveryTime" label="配達完了日時" />
         <el-table-column v-if="[2, 3, 4].includes(orderStatus)" key="estimatedDeliveryTime" prop="estimatedDeliveryTime"
-          label="お届け予定" min-width="110" align="center" />
+          label="お届け予定" min-width="110" align="center">
+          <template #default="scope">
+            {{ getEstimatedDeliveryLabel(scope.row) }}
+          </template>
+        </el-table-column>
         <el-table-column v-if="[0, 2, 5].includes(orderStatus)" key="amount" prop="amount" label="金額" align="center">
           <template v-slot="{ row }">
             <span>{{ formatJPY(row.amount) }}</span>
@@ -454,14 +469,13 @@ onMounted(async () => {
         </el-table-column>
         <el-table-column v-if="[2, 3, 4, 5].includes(orderStatus)" key="remark" prop="remark" label="備考"
           align="center" />
-        <el-table-column v-if="[2, 3, 4].includes(orderStatus)" key="tablewareNumber" prop="tablewareNumber"
+        <el-table-column v-if="[0, 2, 3, 4, 5].includes(orderStatus)" key="tablewareNumber" prop="tablewareNumber"
           label="カトラリー" align="center" min-width="80">
           <template #default="scope">
-            {{ scope.row.tablewareNumber === -1 ? '不要' : scope.row.tablewareNumber === 0 ? '人数分' :
-            scope.row.tablewareNumber }}
+            {{ getTablewareLabel(scope.row) }}
           </template>
         </el-table-column>
-        <el-table-column prop="btn" label="アクション" align="center" width="190px"
+        <el-table-column prop="btn" label="アクション" align="center" width="198px"
           :class-name="orderStatus === 0 ? 'operate' : 'otherOperate'" :min-width="[2, 3, 4].includes(orderStatus)
             ? 130 : [0].includes(orderStatus) ? 140 : 'auto'">
           <template #default="scope">
@@ -550,8 +564,12 @@ onMounted(async () => {
                 <span>{{
                   dialogOrderStatus === 5
                   ? diaForm!.deliveryTime
-                  : diaForm!.estimatedDeliveryTime
+                  : getEstimatedDeliveryLabel(diaForm)
                   }}</span>
+              </div>
+              <div v-if="[2, 3, 4, 5].includes(dialogOrderStatus)" class="user-getTime">
+                <label>カトラリー：</label>
+                <span>{{ getTablewareLabel(diaForm) }}</span>
               </div>
               <div class="user-address">
                 <label>住所：</label>
@@ -763,15 +781,34 @@ onMounted(async () => {
         flex-direction: row;
 
         .btn_box {
-          display: flex;
+          display: grid;
+          grid-template-columns: 40px 1px 54px 1px 40px;
           align-items: center;
+          justify-content: center;
           height: 100%;
 
           .before,
-          .middle,
           .after {
-            width: 40px;
-            margin: 2px;
+            min-width: 0;
+            margin: 0;
+            text-align: center;
+            white-space: nowrap;
+            display: flex;
+            justify-content: center;
+          }
+
+          .middle {
+            min-width: 0;
+            margin: 0;
+            text-align: center;
+            white-space: nowrap;
+            display: flex;
+            justify-content: center;
+          }
+
+          .el-divider--vertical {
+            margin: 0;
+            height: 16px;
           }
         }
       }
