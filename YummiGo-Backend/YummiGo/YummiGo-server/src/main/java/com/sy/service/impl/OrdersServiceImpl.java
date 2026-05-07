@@ -45,6 +45,7 @@ import jakarta.annotation.PostConstruct;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -68,6 +69,7 @@ import java.util.Map;
 @Slf4j
 public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
     implements OrdersService{
+    private static final ZoneId TOKYO_ZONE = ZoneId.of("Asia/Tokyo");
     @Autowired
     private OrdersMapper ordersMapper;
     @Autowired
@@ -124,7 +126,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
         order.setSnapshotAddress(addressBook.getDetail());
         order.setSnapshotConsignee(addressBook.getConsignee());
         order.setNumber(String.valueOf(System.currentTimeMillis()));
-        order.setOrderTime(LocalDateTime.now());
+        order.setOrderTime(nowTokyo());
 //        System.out.println("不是惊魂甫定");
 
         //insert an order
@@ -430,7 +432,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
         }
         order.setStatus(Orders.CONFIRMED);
         if (order.getEstimatedDeliveryTime() == null) {
-            order.setEstimatedDeliveryTime(LocalDateTime.now().plusMinutes(30));
+            order.setEstimatedDeliveryTime(nowTokyo().plusMinutes(30));
         }
         ordersMapper.updateById(order);
     }
@@ -445,7 +447,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
         order.setStatus(Orders.CANCELLED);
         order.setRejectionReason(ordersRejectionDTO.getRejectionReason());
         order.setCancelReason(ordersRejectionDTO.getRejectionReason());
-        order.setCancelTime(LocalDateTime.now());
+        order.setCancelTime(nowTokyo());
         if (Objects.equals(order.getPayStatus(), Orders.PAID)) {
             order.setPayStatus(Orders.REFUND);
         }
@@ -465,7 +467,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
         }
         order.setStatus(Orders.CANCELLED);
         order.setCancelReason(ordersCancelDTO.getCancelReason());
-        order.setCancelTime(LocalDateTime.now());
+        order.setCancelTime(nowTokyo());
         if (Objects.equals(order.getPayStatus(), Orders.PAID)) {
             order.setPayStatus(Orders.REFUND);
         }
@@ -491,7 +493,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
             throw new OrderBusinessException("当前订单状态不支持完成");
         }
         order.setStatus(Orders.COMPLETED);
-        order.setDeliveryTime(LocalDateTime.now());
+        order.setDeliveryTime(nowTokyo());
         ordersMapper.updateById(order);
     }
 
@@ -508,7 +510,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
         }
         order.setStatus(Orders.CANCELLED);
         order.setCancelReason((reason == null || reason.isBlank()) ? "用户取消" : reason);
-        order.setCancelTime(LocalDateTime.now());
+        order.setCancelTime(nowTokyo());
         if (Objects.equals(order.getPayStatus(), Orders.PAID)) {
             order.setPayStatus(Orders.REFUND);
         }
@@ -584,7 +586,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
 
             order.setPayStatus(Orders.PAID);
             order.setStatus(Orders.TO_BE_CONFIRMED);
-            order.setCheckoutTime(LocalDateTime.now());
+            order.setCheckoutTime(nowTokyo());
             if (session.getPaymentIntent() != null) {
                 order.setStripePaymentIntentId(session.getPaymentIntent());
             }
@@ -611,6 +613,10 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
         }
         String sep = successUrl.contains("?") ? "&" : "?";
         return successUrl + sep + "session_id={CHECKOUT_SESSION_ID}";
+    }
+
+    private static LocalDateTime nowTokyo() {
+        return LocalDateTime.now(TOKYO_ZONE);
     }
 
     /**

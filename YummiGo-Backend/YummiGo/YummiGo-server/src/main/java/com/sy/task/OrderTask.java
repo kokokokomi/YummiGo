@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 /*
@@ -20,6 +21,7 @@ import java.util.List;
 @Slf4j
 
 public class OrderTask {
+    private static final ZoneId TOKYO_ZONE = ZoneId.of("Asia/Tokyo");
 
     @Autowired
     private OrdersService ordersService;
@@ -30,16 +32,16 @@ public class OrderTask {
 //    @Scheduled(cron="1/5 * * * * ?")
 
     public void proccessTimeoutOrder(){
-        log.info("over time order process:{}", LocalDateTime.now());
+        log.info("over time order process:{}", nowTokyo());
         // status=? order_time<(now-15)
-        LocalDateTime now = LocalDateTime.now().plusMinutes(-15);
+        LocalDateTime now = nowTokyo().plusMinutes(-15);
         List<Orders> ordersList = ordersService.getByStatusAndOrderTimeLT(Orders.PENDING_PAYMENT, now);
 
         if(ordersList.size() > 0 && ordersList!=null){
             for(Orders orders : ordersList){
                 orders.setStatus(Orders.CANCELLED);
                 orders.setCancelReason("時間切れによる注文の自動キャンセル");
-                orders.setCancelTime(LocalDateTime.now());
+                orders.setCancelTime(nowTokyo());
 
                 ordersService.updateById(orders);
             }
@@ -53,8 +55,8 @@ public class OrderTask {
     @Scheduled(cron = "0 0 1 * * ?")
 //    @Scheduled(cron="0/5 * * * * ?")
     public void proccessDeliveryOrder(){
-        log.info("over time delivery order process:{}", LocalDateTime.now());
-        LocalDateTime time = LocalDateTime.now().plusMinutes(-60);
+        log.info("over time delivery order process:{}", nowTokyo());
+        LocalDateTime time = nowTokyo().plusMinutes(-60);
         List<Orders> ordersList=ordersService.getByStatusAndOrderTimeLT(Orders.DELIVERY_IN_PROGRESS,time);
         if(ordersList.size() > 0 && ordersList!=null){
             for(Orders orders : ordersList){
@@ -64,5 +66,9 @@ public class OrderTask {
             }
         }
 
+    }
+
+    private static LocalDateTime nowTokyo() {
+        return LocalDateTime.now(TOKYO_ZONE);
     }
 }

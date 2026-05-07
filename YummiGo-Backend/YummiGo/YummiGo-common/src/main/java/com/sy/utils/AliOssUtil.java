@@ -2,6 +2,7 @@ package com.sy.utils;
 
 import com.aliyun.oss.ClientException;
 import com.aliyun.oss.model.CannedAccessControlList;
+import com.aliyun.oss.model.PutObjectRequest;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.OSSException;
@@ -33,10 +34,12 @@ public class AliOssUtil {
         OSS ossClient = new OSSClientBuilder().build(endpoint, accessKeyId, accessKeySecret);
 
         try {
-            // Create a PutObject request
-            ossClient.putObject(bucketName, objectName, new ByteArrayInputStream(bytes));
-            // Ensure uploaded image is directly accessible by frontend <img src="...">
-            ossClient.setObjectAcl(bucketName, objectName, CannedAccessControlList.PublicRead);
+            // Upload with public-read ACL in the same request.
+            // Some bucket configs may ignore a subsequent setObjectAcl call.
+            PutObjectRequest putRequest =
+                    new PutObjectRequest(bucketName, objectName, new ByteArrayInputStream(bytes));
+//            putRequest.setCannedACL(CannedAccessControlList.PublicRead);
+            ossClient.putObject(putRequest);
         } catch (OSSException oe) {
             System.out.println("Caught an OSSException, which means your request made it to OSS, "
                     + "but was rejected with an error response for some reason.");
