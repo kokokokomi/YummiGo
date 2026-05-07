@@ -28,6 +28,7 @@ import com.sy.result.PageResult;
 import com.sy.service.OrdersService;
 import com.sy.mapper.OrdersMapper;
 import com.sy.websocket.WebSocketServer;
+import com.sy.utils.CurrencyAmountUtil;
 import com.sy.vo.OrderPaymentStatusVO;
 import com.sy.vo.OrderPaymentVO;
 import com.sy.vo.OrderStatisticsVO;
@@ -114,6 +115,7 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
         //create order data
         Orders order = new Orders();
         BeanUtils.copyProperties(ordersSubmitDTO, order);
+        order.setAmount(CurrencyAmountUtil.normalizeMajor(order.getAmount(), "jpy"));
         order.setAddressBookId(addressBook.getId());
         order.setUserId(BaseContext.getCurrentId());
         order.setPayStatus(Orders.UN_PAID);
@@ -174,14 +176,13 @@ public class OrdersServiceImpl extends ServiceImpl<OrdersMapper, Orders>
                 throw new OrderBusinessException("订单金额异常");
             }
 
-            // 验证金额是否匹配（与 Stripe line item 一致，单位：分）
-            if (order.getAmount().multiply(new BigDecimal(100)).longValue() != ordersPaymentDTO.getAmountInCents()) {
-                throw new OrderBusinessException("支付金额与订单金额不匹配");
-            }
-
             String currency = ordersPaymentDTO.getCurrency() != null && !ordersPaymentDTO.getCurrency().isBlank()
                     ? ordersPaymentDTO.getCurrency().toLowerCase()
                     : "jpy";
+            long expectedMinorAmount = CurrencyAmountUtil.toMinorUnit(order.getAmount(), currency);
+            if (!Objects.equals(expectedMinorAmount, ordersPaymentDTO.getAmountInCents())) {
+                throw new OrderBusinessException("支付金额与订单金额不匹配");
+            }
 
             SessionCreateParams.LineItem.PriceData.ProductData.Builder productData =
                     SessionCreateParams.LineItem.PriceData.ProductData.builder()

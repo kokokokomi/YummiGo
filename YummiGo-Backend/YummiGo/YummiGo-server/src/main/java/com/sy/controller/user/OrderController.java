@@ -52,7 +52,8 @@ public class OrderController {
             return Result.success(result);
         } catch (Exception e) {
             log.error("error session create", e);
-            return Result.error("Try again later");
+            String msg = (e.getMessage() == null || e.getMessage().isBlank()) ? "Try again later" : e.getMessage();
+            return Result.error(msg);
         }
     }
 

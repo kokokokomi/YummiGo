@@ -1,4 +1,7 @@
 target/
+# 秘密情報を含むローカル設定（ルート .gitignore と併せ二重で除外）
+YummiGo-server/src/main/resources/application-dev.yml
+YummiGo-server/src/main/resources/application-prod.yml
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

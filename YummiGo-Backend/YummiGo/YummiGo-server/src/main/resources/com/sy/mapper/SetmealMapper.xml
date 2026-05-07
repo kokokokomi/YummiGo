@@ -31,6 +31,7 @@
         LEFT JOIN category c
         ON s.category_id=c.id
         <where>
+            s.is_deleted = 0
             <if test="dto.name!=null">
                 AND s.name LIKE CONCAT('%', #{dto.name}, '%')
             </if>
@@ -44,9 +45,11 @@
         ORDER BY s.create_time desc
     </select>
     <select id="getDishItemById" resultType="com.sy.vo.DishItemVO">
-        SELECT sd.name, sd.copies, d.image, d.description
+        SELECT sd.name, sd.copies, sd.price, d.image, d.description
             FROM setmeal_dish sd LEFT JOIN dish d
-                ON sd.dish_id = d.id  +
+                ON sd.dish_id = d.id
            WHERE sd.setmeal_id = #{setmealId}
+             AND sd.is_deleted = 0
+             AND (d.is_deleted = 0 OR d.is_deleted IS NULL)
     </select>
 </mapper>

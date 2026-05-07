@@ -1,6 +1,7 @@
 package com.sy.utils;
 
 import com.aliyun.oss.ClientException;
+import com.aliyun.oss.model.CannedAccessControlList;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.OSSException;
@@ -34,6 +35,8 @@ public class AliOssUtil {
         try {
             // Create a PutObject request
             ossClient.putObject(bucketName, objectName, new ByteArrayInputStream(bytes));
+            // Ensure uploaded image is directly accessible by frontend <img src="...">
+            ossClient.setObjectAcl(bucketName, objectName, CannedAccessControlList.PublicRead);
         } catch (OSSException oe) {
             System.out.println("Caught an OSSException, which means your request made it to OSS, "
                     + "but was rejected with an error response for some reason.");
@@ -52,12 +55,20 @@ public class AliOssUtil {
             }
         }
 
-        //Access path rules https://BucketName.Endpoint/ObjectName
+        // Access path rules: https://BucketName.Endpoint/ObjectName
+        String endpointHost = endpoint
+                .replaceFirst("^https?://", "")
+                .replaceAll("/+$", "");
+        // endpoint may already contain "<bucket>." prefix, avoid generating duplicated host
+        String bucketPrefix = bucketName + ".";
+        if (endpointHost.startsWith(bucketPrefix)) {
+            endpointHost = endpointHost.substring(bucketPrefix.length());
+        }
         StringBuilder stringBuilder = new StringBuilder("https://");
         stringBuilder
                 .append(bucketName)
                 .append(".")
-                .append(endpoint)
+                .append(endpointHost)
                 .append("/")
                 .append(objectName);
 

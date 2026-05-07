@@ -31,6 +31,7 @@
     <select id="list" resultType="com.sy.entity.ShoppingCart">
         SELECT * FROM shopping_cart
         <where>
+            is_deleted = 0
             <if test="userId !=null">
                 and user_id=#{userId}
             </if>

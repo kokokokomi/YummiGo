@@ -83,15 +83,18 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal>
     public void deleteSetmeal(List<Long> ids) {
         ids.forEach(id->{
             Setmeal setmeal = setmealMapper.selectById(id);
+            if(setmeal == null){
+                return;
+            }
             if(setmeal.getStatus() == StatusConstant.ENABLE){
                 throw new DeletionNotAllowedException(MessageConstant.SETMEAL_ON_SALE);
             }
         });
-        setmealMapper.deleteBatchIds(ids);
         setmealDishMapper.delete(
                 new LambdaQueryWrapper<SetmealDish>()
                         .in(SetmealDish::getSetmealId,ids)
         );
+        setmealMapper.deleteBatchIds(ids);
     }
 
     /**

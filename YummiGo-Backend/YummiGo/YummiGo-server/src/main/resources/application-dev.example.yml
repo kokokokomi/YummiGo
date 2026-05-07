@@ -1,0 +1,24 @@
+# ローカル開発用テンプレート（本ファイルは Git にコミットしてよい）
+# 手順: このファイルをコピーして application-dev.yml を作成し、各値を自分の環境に合わせて埋める。
+sy:
+  datasource:
+    username: root
+    password: YOUR_MYSQL_PASSWORD
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    port: 3306
+    host: localhost
+    database: yummigo
+  alioss:
+    access-key-id: YOUR_ALIYUN_ACCESS_KEY_ID
+    access-key-secret: YOUR_ALIYUN_ACCESS_KEY_SECRET
+    endpoint: https://oss-cn-REGION.aliyuncs.com
+    bucket-name: your-bucket-name
+  redis:
+    host: localhost
+    port: 6379
+  stripe:
+    apiKey: sk_test_YOUR_STRIPE_SECRET_KEY
+    # ローカル: stripe listen --forward-to localhost:8080/user/stripe/webhook で表示される whsec_...
+    webhookSecret: whsec_YOUR_SIGNING_SECRET
+  google:
+    client-id: YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com

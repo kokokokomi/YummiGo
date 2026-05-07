@@ -61,7 +61,9 @@
             SELECT dish_id
             FROM setmeal_dish
             WHERE setmeal_id = #{id}
+              AND is_deleted = 0
         )
+          AND is_deleted = 0
     </select>
     <select id="selectDishWithFlavorByCategory" resultType="com.sy.vo.DishVO">
         SELECT

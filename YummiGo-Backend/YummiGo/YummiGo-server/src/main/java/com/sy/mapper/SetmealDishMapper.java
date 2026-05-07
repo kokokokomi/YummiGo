@@ -14,7 +14,7 @@ import java.util.List;
 */
 public interface SetmealDishMapper extends BaseMapper<SetmealDish> {
 
-    @Select("SELECT setmeal_id FROM setmeal_dish WHERE dish_id = #{id}")
+    @Select("SELECT setmeal_id FROM setmeal_dish WHERE dish_id = #{id} AND is_deleted = 0")
     List<Long> getSetmealIdsByDishId(Long id);
 
     //Determine if the current dish is associated with a set menu

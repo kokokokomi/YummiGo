@@ -12,8 +12,8 @@ mybatis-plus:
       logic-not-delete-value: 0
 
 spring:
-  profiles:
-    active: dev
+#  profiles:
+#    active: dev
   main:
     allow-circular-references: true
   datasource:

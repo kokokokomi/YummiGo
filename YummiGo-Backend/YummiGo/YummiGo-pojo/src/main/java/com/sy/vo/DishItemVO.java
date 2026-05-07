@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 @Data
 @Builder
@@ -18,6 +19,9 @@ public class DishItemVO implements Serializable {
 
     // 数量（注文部数）
     private Integer copies;
+
+    // 单价
+    private BigDecimal price;
 
     // 料理画像
     private String image;
