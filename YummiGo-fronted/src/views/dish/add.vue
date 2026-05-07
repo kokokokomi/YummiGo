@@ -1,19 +1,21 @@
 <script lang="ts" setup>
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import SelectInput from './components/SelectInput.vue'
 import { addDishAPI, getDishByIdAPI, updateDishAPI } from '@/api/dish'
 import { getCategoryPageListAPI } from '@/api/category'
+import { uploadImageAPI } from '@/api/common'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { resolveImageUrl as resolveImageUrlByRule } from '@/utils/image'
 
 // ------ 数据 ------
 // 固定死数据，应该不用响应式吧？
 const dishFlavorsData = [
-  { name: '口味', list: ['原味', '番茄', '黑椒', '沙拉', '麻辣'] },
-  { name: '甜味', list: ['无糖', '少糖', '半糖', '多糖', '全糖'] },
-  { name: '温度', list: ['热饮', '常温', '去冰', '少冰', '多冰'] },
-  { name: '忌口', list: ['不要葱', '不要蒜', '不要香菜', '不要辣'] },
-  { name: '辣度', list: ['不辣', '微辣', '中辣', '重辣'] }
+  { name: '味付け', list: ['プレーン', 'トマト', '黒胡椒', 'サラダ', '麻辣'] },
+  { name: '甘さ', list: ['無糖', '少なめ', '半分', '多め', '全糖'] },
+  { name: '温度', list: ['ホット', '常温', '氷なし', '少氷', '多氷'] },
+  { name: '苦手', list: ['ネギなし', 'ニンニクなし', '香菜なし', '辛さ控えめ'] },
+  { name: '辛さ', list: ['辛くない', '微辛', '中辛', '激辛'] }
 ]
 
 interface Category {
@@ -48,20 +50,84 @@ const count = ref(0)
 // 图片下的隐藏input框
 const inputRef1 = ref<HTMLInputElement | null>(null)
 const addRef = ref()
+const cropDialogVisible = ref(false)
+const selectedImageData = ref('')
+const croppedPreview = ref('')
+const crop = reactive({
+  x: 0,
+  y: 0,
+  size: 0,
+  naturalWidth: 0,
+  naturalHeight: 0,
+})
+const cropImageRef = ref<HTMLImageElement | null>(null)
+const dragging = reactive({
+  active: false,
+  startClientX: 0,
+  startClientY: 0,
+  startCropX: 0,
+  startCropY: 0,
+})
+const outputMaxBytes = 900 * 1024
+const maxCropSize = computed(() => Math.min(crop.naturalWidth, crop.naturalHeight))
+const minCropSize = computed(() => Math.min(80, maxCropSize.value || 80))
+const maxX = computed(() => Math.max(crop.naturalWidth - crop.size, 0))
+const maxY = computed(() => Math.max(crop.naturalHeight - crop.size, 0))
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
+const resolveImageUrl = resolveImageUrlByRule
+
+const normalizeCropValue = () => {
+  const safeNaturalWidth = Number.isFinite(crop.naturalWidth) ? crop.naturalWidth : 0
+  const safeNaturalHeight = Number.isFinite(crop.naturalHeight) ? crop.naturalHeight : 0
+  const safeMaxCropSize = Math.max(Math.min(safeNaturalWidth, safeNaturalHeight), 0)
+  const safeMinCropSize = Math.min(80, safeMaxCropSize || 80)
+  if (safeMaxCropSize <= 0) {
+    crop.size = 0
+    crop.x = 0
+    crop.y = 0
+    return
+  }
+  const safeSize = Number.isFinite(crop.size) ? crop.size : safeMinCropSize
+  crop.size = clamp(safeSize, safeMinCropSize, safeMaxCropSize)
+  const safeMaxX = Math.max(safeNaturalWidth - crop.size, 0)
+  const safeMaxY = Math.max(safeNaturalHeight - crop.size, 0)
+  const safeX = Number.isFinite(crop.x) ? crop.x : 0
+  const safeY = Number.isFinite(crop.y) ? crop.y : 0
+  crop.x = clamp(safeX, 0, safeMaxX)
+  crop.y = clamp(safeY, 0, safeMaxY)
+}
+
+const cropBoxStyle = computed(() => {
+  if (!cropImageRef.value || crop.naturalWidth <= 0 || crop.naturalHeight <= 0 || crop.size <= 0) {
+    return {}
+  }
+  const imageWidth = cropImageRef.value.clientWidth || 0
+  const imageHeight = cropImageRef.value.clientHeight || 0
+  if (imageWidth <= 0 || imageHeight <= 0) {
+    return {}
+  }
+  const widthRatio = imageWidth / crop.naturalWidth
+  const heightRatio = imageHeight / crop.naturalHeight
+  return {
+    width: `${Math.max(crop.size * widthRatio, 0)}px`,
+    height: `${Math.max(crop.size * heightRatio, 0)}px`,
+    transform: `translate(${Math.max(crop.x * widthRatio, 0)}px, ${Math.max(crop.y * heightRatio, 0)}px)`,
+  }
+})
 
 // 表单校验
 const rules = {
   name: [
-    { required: true, trigger: 'blur', message: '不能为空' },
+    { required: true, trigger: 'blur', message: '必須項目です' },
   ],
   detail: [
-    { required: true, trigger: 'blur', message: '不能为空' },
+    { required: true, trigger: 'blur', message: '必須項目です' },
   ],
   price: [
-    { required: true, trigger: 'blur', message: '不能为空' },
+    { required: true, trigger: 'blur', message: '必須項目です' },
   ],
   categoryId: [
-    { required: true, trigger: 'blur', message: '不能为空' },
+    { required: true, trigger: 'blur', message: '必須項目です' },
   ],
 }
 
@@ -80,28 +146,167 @@ const chooseImg = () => {
   }
 }
 
-// 在文件管理器中选择图片后触发的改变事件：预览
-const onFileChange1 = (e: Event) => {
-  // 获取用户选择的文件列表（伪数组）
-  console.log(e)
-  const target = e.target as HTMLInputElement
-  const files = target.files;
-  if (files && files.length > 0) {
-    // 选择了图片
-    console.log(files[0])
-    // 文件 -> base64字符串  (可以发给后台)
-    // 1. 创建 FileReader 对象
-    const fr = new FileReader()
-    // 2. 调用 readAsDataURL 函数，读取文件内容
-    fr.readAsDataURL(files[0])
-    // 3. 监听 fr 的 onload 事件，文件转为base64字符串成功后会触发该事件
-    fr.onload = () => {
-      // 4. 通过 e.target.result 获取到读取的结果，值是字符串（base64 格式的字符串）
-      form.pic = fr.result as string
-      console.log('avatar')
-      console.log(form.pic)
+const fileToDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+  })
+
+const loadImage = (src: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = reject
+    image.src = src
+  })
+
+const getBase64Size = (base64: string) => {
+  const content = base64.split(',')[1] || ''
+  return Math.ceil((content.length * 3) / 4)
+}
+
+const dataUrlToFile = async (dataUrl: string, filename: string) => {
+  const response = await fetch(dataUrl)
+  const blob = await response.blob()
+  return new File([blob], filename, { type: blob.type || 'image/jpeg' })
+}
+
+const createCroppedBase64 = async () => {
+  if (!selectedImageData.value || crop.size <= 0) {
+    return ''
+  }
+  const image = await loadImage(selectedImageData.value)
+  let renderSize = crop.size
+  let quality = 0.9
+  const minRenderSize = 320
+  const canvas = document.createElement('canvas')
+  let result = ''
+  while (true) {
+    canvas.width = Math.floor(renderSize)
+    canvas.height = Math.floor(renderSize)
+    const context = canvas.getContext('2d')
+    if (!context) {
+      break
+    }
+    context.clearRect(0, 0, canvas.width, canvas.height)
+    context.drawImage(image, crop.x, crop.y, crop.size, crop.size, 0, 0, canvas.width, canvas.height)
+    result = canvas.toDataURL('image/jpeg', quality)
+    if (getBase64Size(result) <= outputMaxBytes || (quality <= 0.5 && renderSize <= minRenderSize)) {
+      break
+    }
+    if (quality > 0.5) {
+      quality -= 0.1
+    } else {
+      renderSize = Math.max(Math.floor(renderSize * 0.8), minRenderSize)
     }
   }
+  return result
+}
+
+const updateCropPreview = async () => {
+  croppedPreview.value = await createCroppedBase64()
+}
+
+const onCropParamChange = () => {
+  if (!cropDialogVisible.value) {
+    return
+  }
+  normalizeCropValue()
+  updateCropPreview()
+}
+
+const onCropSizeChange = () => {
+  normalizeCropValue()
+  onCropParamChange()
+}
+
+const stopDrag = () => {
+  dragging.active = false
+  window.removeEventListener('pointermove', onDragMove)
+  window.removeEventListener('pointerup', stopDrag)
+}
+
+const onDragMove = (event: PointerEvent) => {
+  if (!dragging.active || !cropImageRef.value) {
+    return
+  }
+  const imageWidth = cropImageRef.value.clientWidth || 0
+  const imageHeight = cropImageRef.value.clientHeight || 0
+  if (imageWidth <= 0 || imageHeight <= 0 || crop.naturalWidth <= 0 || crop.naturalHeight <= 0) {
+    stopDrag()
+    return
+  }
+  const deltaX = ((event.clientX - dragging.startClientX) / imageWidth) * crop.naturalWidth
+  const deltaY = ((event.clientY - dragging.startClientY) / imageHeight) * crop.naturalHeight
+  crop.x = dragging.startCropX + deltaX
+  crop.y = dragging.startCropY + deltaY
+  onCropParamChange()
+}
+
+const onCropDragStart = (event: PointerEvent) => {
+  if (crop.size <= 0 || !cropImageRef.value) {
+    return
+  }
+  dragging.active = true
+  dragging.startClientX = event.clientX
+  dragging.startClientY = event.clientY
+  dragging.startCropX = crop.x
+  dragging.startCropY = crop.y
+  window.addEventListener('pointermove', onDragMove)
+  window.addEventListener('pointerup', stopDrag)
+}
+
+const openCropDialog = async (file: File) => {
+  if (!file.type.startsWith('image/')) {
+    ElMessage.warning('画像ファイルを選択してください')
+    return
+  }
+  selectedImageData.value = await fileToDataUrl(file)
+  const image = await loadImage(selectedImageData.value)
+  crop.naturalWidth = image.width
+  crop.naturalHeight = image.height
+  crop.size = Math.min(image.width, image.height)
+  crop.x = Math.floor((image.width - crop.size) / 2)
+  crop.y = Math.floor((image.height - crop.size) / 2)
+  cropDialogVisible.value = true
+  await updateCropPreview()
+}
+
+// 在文件管理器中选择图片后触发的改变事件：预览 + 裁剪
+const onFileChange1 = async (e: Event) => {
+  const target = e.target as HTMLInputElement
+  const files = target.files
+  if (files && files.length > 0) {
+    await openCropDialog(files[0])
+  }
+  target.value = ''
+}
+
+const applyCrop = async () => {
+  if (!croppedPreview.value) {
+    ElMessage.warning('画像の裁剪に失敗しました')
+    return
+  }
+  try {
+    const file = await dataUrlToFile(croppedPreview.value, `dish-${Date.now()}.jpg`)
+    const res = await uploadImageAPI(file)
+    if (res.data.code !== 1) {
+      ElMessage.warning(res.data.message || '画像アップロードに失敗しました')
+      return
+    }
+    form.pic = res.data.data
+  } catch (error) {
+    ElMessage.warning('画像アップロードに失敗しました')
+    return
+  }
+  cropDialogVisible.value = false
+}
+
+const cancelCrop = () => {
+  stopDrag()
+  cropDialogVisible.value = false
 }
 
 // 按钮 - 添加口味
@@ -178,19 +383,23 @@ const submit = async (keep: any) => {
       ...obj,
       list: JSON.stringify(obj.list)
     }))
+    params.image = form.pic
+    params.description = form.detail
     delete params.dishFlavors
+    delete params.pic
+    delete params.detail
     console.log('看看有没有serialize成功？', params)
     // --- 处理完毕，开始提交 ---
     // 情况1：无路径参数，form.id保持默认值0，新增菜品
     if (form.id === 0) {
       console.log('新增菜品')
       const res = await addDishAPI(params)
-      if (res.data.code !== 0) {
+      if (res.data.code !== 1) {
         console.log('新增菜品失败！')
         return false
       }
       ElMessage({
-        message: '新增菜品成功',
+        message: '料理を追加しました',
         type: 'success',
       })
       // 根据keep决定是否继续添加
@@ -214,12 +423,12 @@ const submit = async (keep: any) => {
     else {
       console.log('修改菜品')
       const res = await updateDishAPI(params)
-      if (res.data.code !== 0) {
+      if (res.data.code !== 1) {
         console.log('修改菜品失败！')
         return false
       }
       ElMessage({
-        message: '修改菜品成功',
+        message: '更新しました',
         type: 'success',
       })
       router.push({
@@ -254,6 +463,8 @@ const init = async () => {
     let dish = await getDishByIdAPI(form.id)
     console.log(dish)
     Object.assign(form, dish.data.data)
+    form.pic = dish.data.data?.image || ''
+    form.detail = dish.data.data?.description || ''
     console.log(form)
     // 3. 如果是修改页面，需要将口味数组中的list字符串反序列化
     form.dishFlavors =
@@ -273,29 +484,53 @@ init()
 </script>
 
 <template>
-  <h1>添加菜品页</h1>
+  <h1>{{ route.query.id ? '料理を編集' : '料理を追加' }}</h1>
   <el-card>
+    <el-dialog v-model="cropDialogVisible" width="700px" title="画像を裁剪" @closed="stopDrag">
+      <div class="cropper-wrap">
+        <div class="cropper-panel">
+          <div class="crop-stage">
+            <img ref="cropImageRef" class="origin-img" :src="selectedImageData" alt="origin" />
+            <div class="crop-box" :style="cropBoxStyle" @pointerdown.prevent="onCropDragStart" />
+          </div>
+          <el-form class="crop-form" label-position="top">
+            <el-form-item label="サイズ">
+              <el-slider v-model="crop.size" :min="minCropSize" :max="maxCropSize" :step="1" @input="onCropSizeChange" />
+            </el-form-item>
+          </el-form>
+        </div>
+        <div class="cropper-preview">
+          <p>プレビュー（圧縮後）</p>
+          <img v-if="croppedPreview" :src="croppedPreview" alt="preview" />
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="cancelCrop">キャンセル</el-button>
+        <el-button type="primary" @click="applyCrop">適用</el-button>
+      </template>
+    </el-dialog>
+
     <el-form :model="form" :rules="rules" ref="addRef">
       <el-form-item label="名称" :label-width="formLabelWidth" prop="name">
         <el-input v-model="form.name" autocomplete="off" />
       </el-form-item>
-      <el-form-item label="图片" :label-width="formLabelWidth" prop="pic">
+      <el-form-item label="画像" :label-width="formLabelWidth" prop="pic">
         <img class="the_img" v-if="!form.pic" src="/src/assets/image/user_default.png" alt="" />
-        <img class="the_img" v-else :src="form.pic" alt="" />
+        <img class="the_img" v-else :src="resolveImageUrl(form.pic)" alt="" />
         <input type="file" accept="image/*" style="display: none" ref="inputRef1" @change="onFileChange1" />
         <el-button type="primary" @click="chooseImg">
           <el-icon style="font-size: 15px; margin-right: 10px;">
             <Plus />
           </el-icon>
-          选择图片
+          画像を選択
         </el-button>
       </el-form-item>
-      <el-form-item label="口味配置:">
+      <el-form-item label="オプション:">
         <div class="flavorBox">
-          <span v-if="form.dishFlavors.length == 0" class="addBut" @click="addFlavor"> + 添加口味</span>
+          <span v-if="form.dishFlavors.length == 0" class="addBut" @click="addFlavor"> + オプションを追加</span>
           <div v-if="form.dishFlavors.length != 0" class="flavor">
             <div class="title">
-              <span>口味名（3个字内）</span>
+              <span>項目名（全角3文字程度）</span>
             </div>
             <div class="cont">
               <div v-for="(item, index) in form.dishFlavors" :key="index" class="items">
@@ -308,32 +543,32 @@ init()
                     <i @click="delFlavorLabel(index, ind)">X</i></span>
                   <div class="inputBox"></div>
                 </div>
-                <span class="delFlavor delBut non" @click="delFlavor(item.name)">删除</span>
+                <span class="delFlavor delBut non" @click="delFlavor(item.name)">削除</span>
               </div>
             </div>
             <div v-if="!!leftDishFlavors.length && form.dishFlavors.length < dishFlavorsData.length" class="addBut"
               @click="addFlavor">
-              添加口味
+              オプションを追加
             </div>
           </div>
         </div>
       </el-form-item>
-      <el-form-item label="详情" :label-width="formLabelWidth" prop="detail">
+      <el-form-item label="詳細" :label-width="formLabelWidth" prop="detail">
         <el-input v-model="form.detail" autocomplete="off" type="textarea" />
       </el-form-item>
-      <el-form-item label="价格" :label-width="formLabelWidth" prop="price">
+      <el-form-item label="価格" :label-width="formLabelWidth" prop="price">
         <el-input v-model="form.price" autocomplete="off" />
       </el-form-item>
-      <el-form-item label="分类" :label-width="formLabelWidth" prop="categoryId">
-        <el-select clearable v-model="form.categoryId" placeholder="选择分类类型">
+      <el-form-item label="カテゴリ" :label-width="formLabelWidth" prop="categoryId">
+        <el-select clearable v-model="form.categoryId" placeholder="カテゴリを選択">
           <el-option v-for="item in categoryList" :key="item.id" :label="item.name" :value="item.id" />
         </el-select>
       </el-form-item>
     </el-form>
     <el-form-item>
-      <el-button class="submit_btn" type="success" @click="submit(0)">保存并退出</el-button>
-      <el-button v-if="form.id == 0" class="continue_btn" type="success" plain @click="submit(1)">保存并继续添加</el-button>
-      <el-button class="cancel_btn" type="info" plain @click="cancel">取消</el-button>
+      <el-button class="submit_btn" type="success" @click="submit(0)">保存して戻る</el-button>
+      <el-button v-if="form.id == 0" class="continue_btn" type="success" plain @click="submit(1)">保存して続けて追加</el-button>
+      <el-button class="cancel_btn" type="info" plain @click="cancel">キャンセル</el-button>
     </el-form-item>
   </el-card>
 </template>
@@ -463,6 +698,109 @@ img {
         }
       }
     }
+  }
+}
+
+.cropper-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  gap: 16px;
+  align-items: start;
+  width: 100%;
+  overflow: hidden;
+}
+
+.cropper-panel {
+  min-width: 0;
+}
+
+.crop-stage {
+  position: relative;
+  width: 100%;
+  max-height: 260px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.crop-form :deep(.el-form-item) {
+  margin-bottom: 12px;
+}
+
+.crop-form {
+  width: 80%;
+  max-width: 420px;
+  min-width: 220px;
+  margin: 0 auto;
+}
+
+.crop-form :deep(.el-form-item__content) {
+  width: 100%;
+  margin-left: 0 !important;
+}
+
+.crop-form :deep(.el-slider) {
+  width: 100%;
+  max-width: 100%;
+}
+
+.crop-form :deep(.el-slider__runway) {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.origin-img {
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  display: block;
+}
+
+.crop-box {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 2px solid #409eff;
+  background: rgba(64, 158, 255, 0.15);
+  box-sizing: border-box;
+  cursor: move;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.cropper-preview {
+  width: 180px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  padding: 10px;
+  background: #fafafa;
+  box-sizing: border-box;
+}
+
+.cropper-preview p {
+  margin: 0 0 8px;
+  color: #606266;
+  font-size: 13px;
+}
+
+.cropper-preview img {
+  width: 160px;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
+}
+
+@media (max-width: 760px) {
+  .cropper-wrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cropper-preview {
+    width: 100%;
   }
 }
 </style>

@@ -18,7 +18,7 @@ const registerRef = ref()
 const samePwd = (rules: any, value: any, callback: any) => {
   if (value !== form.value.password) {
     // 如果验证失败，则调用 回调函数时，指定一个 Error 对象。
-    callback(new Error('两次输入的密码不一致!'))
+    callback(new Error('パスワードが一致しません'))
   } else {
     // 如果验证成功，则直接调用 callback 回调函数即可。
     callback()
@@ -26,24 +26,24 @@ const samePwd = (rules: any, value: any, callback: any) => {
 }
 const rules = { // 表单的规则检验对象
   account: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { required: true, message: 'ユーザー名を入力してください', trigger: 'blur' },
     {
       pattern: /^[a-zA-Z0-9]{1,10}$/,
-      message: '用户名必须是1-10的大小写字母数字',
+      message: '半角英数字1〜10文字',
       trigger: 'blur'
     }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
+    { required: true, message: 'パスワードを入力してください', trigger: 'blur' },
     {
       pattern: /^\S{6,15}$/,
-      message: '密码必须是6-15的非空字符',
+      message: '6〜15文字の空白以外の文字',
       trigger: 'blur'
     }
   ],
   repassword: [
-    { required: true, message: '请再次输入密码', trigger: 'blur' },
-    { pattern: /^\S{6,15}$/, message: '密码必须是6-15的非空字符', trigger: 'blur' },
+    { required: true, message: 'パスワードを再入力してください', trigger: 'blur' },
+    { pattern: /^\S{6,15}$/, message: '6〜15文字の空白以外の文字', trigger: 'blur' },
     { validator: samePwd, trigger: 'blur' }
   ]
 }
@@ -66,7 +66,7 @@ const registerFn = async () => {
       return false
     }
     // 3.注册成功，提示用户
-    ElMessage.success('注册成功!')
+    ElMessage.success('登録しました')
     // 4.路由跳转到登录页面
     router.push('/login')
   } else {
@@ -136,22 +136,22 @@ const registerFn = async () => {
     <!-- 注册的盒子 -->
     <div class="reg-box">
       <!-- 标题“后台管理系统(图片)”的盒子 -->
-      <div class="title-box">注 册</div>
+      <div class="title-box">新規登録</div>
       <!-- 注册的表单区域 -->
       <!-- el-form 自带校验能力，所以直接自定义规则就行(不用什么自定义监听之类的) -->
       <el-form :model="form" label-width="0px" :rules="rules" ref="registerRef">
         <el-form-item prop="account">
-          <el-input placeholder="请输入用户名" v-model="form.account"></el-input>
+          <el-input placeholder="ユーザー名" v-model="form.account"></el-input>
         </el-form-item>
         <el-form-item prop="password">
-          <el-input type="password" placeholder="请输入密码" v-model="form.password"></el-input>
+          <el-input type="password" placeholder="パスワード" v-model="form.password"></el-input>
         </el-form-item>
         <el-form-item prop="repassword">
-          <el-input type="password" placeholder="请再次确认密码" v-model="form.repassword"></el-input>
+          <el-input type="password" placeholder="パスワード（確認）" v-model="form.repassword"></el-input>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" class="btn-reg" @click="registerFn">注册</el-button>
-          <el-link class="router" type="info" @click="router.push('/login')">去登录</el-link>
+          <el-button type="primary" class="btn-reg" @click="registerFn">登録</el-button>
+          <el-link class="router" type="info" @click="router.push('/login')">ログインへ</el-link>
         </el-form-item>
       </el-form>
     </div>

@@ -18,13 +18,13 @@ const updateRef = ref()
 // 表单校验
 const rules = {
   name: [
-    { required: true, trigger: 'blur', message: '不能为空' },
+    { required: true, trigger: 'blur', message: '必須項目です' },
   ],
   type: [
-    { required: true, trigger: 'blur', message: '不能为空' },
+    { required: true, trigger: 'blur', message: '必須項目です' },
   ],
   sort: [
-    { required: true, trigger: 'blur', message: '不能为空' },
+    { required: true, trigger: 'blur', message: '必須項目です' },
   ],
 }
 
@@ -49,7 +49,7 @@ const submit = async () => {
       }
       // 然后进行 消息提示，页面跳转 等操作
       ElMessage({
-        message: '修改分类信息成功',
+        message: '更新しました',
         type: 'success',
       })
       router.push({
@@ -89,22 +89,22 @@ init()
 </script>
 
 <template>
-  <h1>修改分类页</h1>
+  <h1>カテゴリを編集</h1>
   <el-card>
     <el-form :model="form" :rules="rules" ref="updateRef">
-      <el-form-item label="姓名" :label-width="formLabelWidth" prop="name">
+      <el-form-item label="名称" :label-width="formLabelWidth" prop="name">
         <el-input v-model="form.name" autocomplete="off" />
       </el-form-item>
-      <el-form-item label="类别" :label-width="formLabelWidth" prop="type">
+      <el-form-item label="種別" :label-width="formLabelWidth" prop="type">
         <el-input v-model="form.type" autocomplete="off" />
       </el-form-item>
-      <el-form-item label="排序" :label-width="formLabelWidth" prop="sort">
+      <el-form-item label="表示順" :label-width="formLabelWidth" prop="sort">
         <el-input v-model="form.sort" autocomplete="off" />
       </el-form-item>
     </el-form>
     <el-form-item>
-      <el-button class="submit_btn" type="success" @click="submit">update</el-button>
-      <el-button class="cancel_btn" type="info" plain @click="cancel">cancel</el-button>
+      <el-button class="submit_btn" type="success" @click="submit">更新</el-button>
+      <el-button class="cancel_btn" type="info" plain @click="cancel">キャンセル</el-button>
     </el-form-item>
   </el-card>
 </template>

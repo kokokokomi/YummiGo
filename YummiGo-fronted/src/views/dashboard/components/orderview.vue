@@ -1,9 +1,9 @@
 <template>
   <div class="container">
     <h2 class="homeTitle">
-      订单管理<i>{{ days[1] }}</i>
+      注文<i>{{ days[1] }}</i>
       <div class="more">
-        <router-link to="/order">订单明细</router-link>
+        <router-link to="/order">注文一覧</router-link>
         <el-icon>
           <ArrowRight />
         </el-icon>
@@ -16,7 +16,7 @@
             <el-icon>
               <DocumentAdd />
             </el-icon>
-            待接单
+            受付待ち
           </span>
           <span class="num tip">
             <router-link to="/order?status=2">{{ orderviewData.waitingOrders }}</router-link>
@@ -27,7 +27,7 @@
             <el-icon>
               <Bicycle />
             </el-icon>
-            待派送
+            配達待ち
           </span>
           <span class="num tip">
             <router-link to="/order?status=3">{{ orderviewData.deliveredOrders }}</router-link>
@@ -38,7 +38,7 @@
             <el-icon>
               <DocumentChecked />
             </el-icon>
-            已完成
+            完了
           </span>
           <span class="num">
             <router-link to="/order?status=5">{{ orderviewData.completedOrders }}</router-link>
@@ -49,7 +49,7 @@
             <el-icon>
               <DocumentDelete />
             </el-icon>
-            已取消
+            キャンセル
           </span>
           <span class="num">
             <router-link to="/order?status=6">{{ orderviewData.cancelledOrders }}</router-link>
@@ -60,7 +60,7 @@
             <el-icon>
               <Document />
             </el-icon>
-            全部订单
+            すべて
           </span>
           <span class="num">
             <router-link to="/order">{{ orderviewData.allOrders }}</router-link>

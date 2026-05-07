@@ -73,7 +73,7 @@ watch(() => props.searchKey, (value) => {
 
 // 拿到所有菜品列表，包括详细信息
 const getAllDishList = async () => {
-  const { data: res } = await getDishPageListAPI({ page: 1, pageSize: 100, type: 1})
+  const { data: res } = await getDishPageListAPI({ page: 1, pageSize: 100, type: 1, status: 1 })
   allDishList.value = res.data.records
 }
 
@@ -87,7 +87,7 @@ const getdishCategoryList = async () => {
 
 // 拿到当前左侧选择菜品分类下的菜品列表dishList，显示在中间栏
 const getDishList = async (id: number) => {
-  const { data: res } = await getDishPageListAPI({ page: 1, pageSize: 100, categoryId: id })
+  const { data: res } = await getDishPageListAPI({ page: 1, pageSize: 100, categoryId: id, status: 1 })
   if (res.data.records.length == 0) {
     dishList.value = []
     return
@@ -106,7 +106,7 @@ const getDishList = async (id: number) => {
 
 // 根据搜索框的关键词name，模糊查询菜品
 const getDishForName = async (name: string) => {
-  const { data: res } = await getDishPageListAPI({ page: 1, pageSize: 100, name })
+  const { data: res } = await getDishPageListAPI({ page: 1, pageSize: 100, name, status: 1 })
   let newArr = res.data.records
   // 加个dishId名，和后端名称对应！
   newArr.forEach((n: any) => {
@@ -208,7 +208,7 @@ const delCheck = (name: any) => {
               <el-checkbox :key="index" :value="item.name">
                 <div class="item">
                   <span style="flex: 3; text-align: left">{{ item.name }}</span>
-                  <span>{{ item.status == 0 ? '停售' : '在售' }}</span>
+                  <span>{{ item.status == 0 ? '販売停止' : '販売中' }}</span>
                   <span>{{ (Number(item.price)).toFixed(2) }}</span>
                 </div>
               </el-checkbox>
@@ -219,7 +219,7 @@ const delCheck = (name: any) => {
     </div>
     <div class="ritCont">
       <div class="tit">
-        已选菜品({{ checkedListAll.length }})
+        選択中の料理（{{ checkedListAll.length }}）
       </div>
       <div class="items">
         <div v-for="(item, ind) in checkedListAll" :key="ind" class="item">

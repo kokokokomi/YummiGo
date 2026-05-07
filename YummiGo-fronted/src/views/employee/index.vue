@@ -5,6 +5,7 @@ import { getEmployeePageListAPI, updateEmployeeStatusAPI, deleteEmployeeAPI } fr
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { useUserInfoStore } from '@/store'
+import { resolveImageUrl } from '@/utils/image'
 
 // ------ .d.ts 属性类型接口 ------
 interface employee {
@@ -81,7 +82,7 @@ const change_btn = async (row: any) => {
   init()
   ElMessage({
     type: 'success',
-    message: '修改成功',
+    message: '更新しました',
   })
 }
 
@@ -90,11 +91,11 @@ const delete_btn = (row: any) => {
   console.log('要删除的行数据')
   console.log(row)
   ElMessageBox.confirm(
-    '该操作会永久删除员工，是否继续？',
-    'Warning',
+    'このスタッフを削除します。よろしいですか？',
+    '確認',
     {
-      confirmButtonText: 'OK',
-      cancelButtonText: 'Cancel',
+      confirmButtonText: 'はい',
+      cancelButtonText: 'いいえ',
       type: 'warning',
     }
   )
@@ -106,13 +107,13 @@ const delete_btn = (row: any) => {
       init()
       ElMessage({
         type: 'success',
-        message: '删除成功',
+        message: '削除しました',
       })
     })
     .catch(() => {
       ElMessage({
         type: 'info',
-        message: '取消删除',
+        message: '削除をキャンセルしました',
       })
     })
 }
@@ -122,53 +123,53 @@ const delete_btn = (row: any) => {
 <template>
   <el-card>
     <div class="horizontal">
-      <el-input size="large" class="input" v-model="pageData.name" placeholder="请输入想查询的员工名" />
-      <el-button size="large" class="btn" round type="success" @click="init()">查询员工</el-button>
+      <el-input size="large" class="input" v-model="pageData.name" placeholder="スタッフ名で検索" />
+      <el-button size="large" class="btn" round type="success" @click="init()">検索</el-button>
       <el-button size="large" class="btn" type="primary" @click="router.push('/employee/add')">
         <el-icon style="font-size: 15px; margin-right: 10px;">
           <Plus />
-        </el-icon>添加员工
+        </el-icon>スタッフを追加
       </el-button>
     </div>
     <el-table :data="employeeList" stripe>
       <!-- <el-table-column prop="id" label="id" /> -->
-      <el-table-column prop="name" label="姓名" align="center" />
-      <el-table-column prop="account" label="账号" align="center" />
-      <el-table-column prop="phone" label="手机号" width="120px" align="center" />
-      <el-table-column prop="age" label="年龄" align="center" />
-      <el-table-column prop="gender" label="性别" align="center" />
-      <el-table-column prop="pic" label="头像" align="center">
+      <el-table-column prop="name" label="氏名" align="center" />
+      <el-table-column prop="account" label="アカウント" align="center" />
+      <el-table-column prop="phone" label="電話番号" width="120px" align="center" />
+      <el-table-column prop="age" label="年齢" align="center" />
+      <el-table-column prop="gender" label="性別" align="center" />
+      <el-table-column prop="pic" label="顔写真" align="center">
         <template #default="scope">
-          <img v-if="scope.row.pic" :src="scope.row.pic" alt="" />
+          <img v-if="scope.row.pic" :src="resolveImageUrl(scope.row.pic)" alt="" />
           <img v-else src="/src/assets/image/user_default.png" alt="" />
         </template>
       </el-table-column>
-      <el-table-column prop="status" label="状态" align="center">
+      <el-table-column prop="status" label="状態" align="center">
         <template #default="scope">
           <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'" round>
-            {{ scope.row.status === 1 ? '启用' : '禁用' }}
+            {{ scope.row.status === 1 ? '有効' : '無効' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="updateTime" label="上次操作时间" width="120px" align="center" />
-      <el-table-column label="操作" width="200px" align="center">
+      <el-table-column prop="updateTime" label="更新日時" width="120px" align="center" />
+      <el-table-column label="アクション" width="200px" align="center">
         <!-- scope 的父组件是 el-table -->
         <template #default="scope">
           <!-- <el-button @click="update_btn(scope.row)" type="primary">修改</el-button> -->
           <el-button @click="update_btn(scope.row)" type="primary" :disabled="userInfoStore.userInfo?.userName !== 'admin'
-            && userInfoStore.userInfo?.userName !== scope.row.userName ? true : false">修改
+            && userInfoStore.userInfo?.userName !== scope.row.userName ? true : false">編集
           </el-button>
           <el-button @click="change_btn(scope.row)" plain :type="scope.row.status === 1 ? 'danger' : 'primary'"
             :disabled="userInfoStore.userInfo?.userName !== 'admin' ? true : false">
-            {{ scope.row.status === 1 ? '禁用' : '启用' }}
+            {{ scope.row.status === 1 ? '無効化' : '有効化' }}
           </el-button>
           <el-button @click="delete_btn(scope.row)" type="danger"
-            :disabled="userInfoStore.userInfo?.userName !== 'admin' ? true : false">删除
+            :disabled="userInfoStore.userInfo?.userName !== 'admin' ? true : false">削除
           </el-button>
         </template>
       </el-table-column>
       <template #empty>
-        <el-empty description=" 没有数据" />
+        <el-empty description="データがありません" />
       </template>
     </el-table>
 

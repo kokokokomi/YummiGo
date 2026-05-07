@@ -5,6 +5,7 @@ import { getDishPageListAPI, updateDishStatusAPI, deleteDishesAPI } from '@/api/
 import { getCategoryPageListAPI } from '@/api/category'
 import { ElMessage, ElMessageBox, ElTable } from 'element-plus'
 import { useRouter } from 'vue-router'
+import { resolveImageUrl } from '@/utils/image'
 
 // ------ .d.ts 属性类型接口 ------
 // 接收到不在接口中定义的属性的数据，ts会报错，但是类型推断错误不会妨碍接收，控制台还是能打印的
@@ -35,20 +36,20 @@ const categoryList = ref<Category[]>([])
 // 分页参数
 const pageData = reactive({
   name: '',
-  categoryId: '',
-  status: '',
+  categoryId: '' as number | string,
+  status: '' as number | string,
   page: 1,
-  pageSize: 6,
+  pageSize: 10,
 })
 const total = ref(0)
 const options = [
   {
     value: '1',
-    label: '起售',
+    label: '販売中',
   },
   {
     value: '0',
-    label: '停售',
+    label: '販売停止',
   }
 ]
 
@@ -66,18 +67,18 @@ const init = async () => {
 }
 // 刷新页面数据
 const showPageList = async () => {
-  const { data: res } = await getDishPageListAPI(pageData)
+  const params = {
+    page: pageData.page,
+    pageSize: pageData.pageSize,
+    name: pageData.name.trim() || undefined,
+    categoryId: pageData.categoryId === '' ? undefined : Number(pageData.categoryId),
+    status: pageData.status === '' ? undefined : Number(pageData.status),
+  }
+  const { data: res } = await getDishPageListAPI(params)
   console.log('菜品列表')
   console.log(res.data)
   dishList.value = res.data.records
-  total.value = res.data.total
-}
-const resolveImageUrl = (path?: string) => {
-  if (!path) return ''
-  if (/^(https?:)?\/\//.test(path) || path.startsWith('data:') || path.startsWith('blob:')) return path
-  if (path.startsWith('/api/')) return path
-  if (path.startsWith('/')) return `/api${path}`
-  return `/api/${path}`
+  total.value = Number(res.data.total || 0)
 }
 init() // 页面初始化，写在这里时的生命周期是beforecreated/created的时候
 showPageList() // 页面一开始就要展示分页菜品列表
@@ -85,13 +86,20 @@ showPageList() // 页面一开始就要展示分页菜品列表
 // 监听翻页和每页显示数量的变化
 const handleCurrentChange = (val: number) => {
   pageData.page = val
-  // 根据输入框是否有值/进行了查询，来决定是所有歌曲还是查询后的列表
   showPageList()
 }
 
 const handleSizeChange = (val: number) => {
+  pageData.page = 1
   pageData.pageSize = val
-  // 根据输入框是否有值/进行了查询，来决定是所有歌曲还是查询后的列表
+  showPageList()
+}
+const onSearch = () => {
+  pageData.page = 1
+  showPageList()
+}
+const onFilterChange = () => {
+  pageData.page = 1
   showPageList()
 }
 
@@ -127,7 +135,7 @@ const change_btn = async (row: any) => {
   showPageList()
   ElMessage({
     type: 'success',
-    message: '修改成功',
+    message: '更新しました',
   })
 }
 
@@ -136,11 +144,11 @@ const deleteBatch = (row?: any) => {
   console.log('要删除的行数据')
   console.log(row)
   ElMessageBox.confirm(
-    '该操作会永久删除菜品，是否继续？',
-    'Warning',
+    'この料理を削除します。よろしいですか？',
+    '確認',
     {
-      confirmButtonText: 'OK',
-      cancelButtonText: 'Cancel',
+      confirmButtonText: 'はい',
+      cancelButtonText: 'いいえ',
       type: 'warning',
     }
   )
@@ -151,7 +159,7 @@ const deleteBatch = (row?: any) => {
         if (multiSelection.value.length == 0) {
           ElMessage({
             type: 'warning',
-            message: '请先选择要删除的菜品',
+            message: '削除する料理を選択してください',
           })
           return
         }
@@ -163,26 +171,26 @@ const deleteBatch = (row?: any) => {
         ids = ids.join(',')
         console.log('ids', ids)
         let res = await deleteDishesAPI(ids)
-        if (res.data.code != 0) return
+        if (res.data.code != 1) return
       }
       // 2. 传入行数据，单个删除
       else {
         console.log('id包装成数组，然后调用批量删除接口')
         console.log(row.id)
         let res = await deleteDishesAPI(row.id)
-        if (res.data.code != 0) return
+        if (res.data.code != 1) return
       }
       // 删除后刷新页面，更新数据
       showPageList()
       ElMessage({
         type: 'success',
-        message: '删除成功',
+        message: '削除しました',
       })
     })
     .catch(() => {
       ElMessage({
         type: 'info',
-        message: '取消删除',
+        message: '削除をキャンセルしました',
       })
     })
 }
@@ -191,62 +199,62 @@ const deleteBatch = (row?: any) => {
 <template>
   <el-card>
     <div class="horizontal">
-      <el-input size="large" class="input" v-model="pageData.name" placeholder="请输入菜品名" />
-      <el-select size="large" class="input" clearable v-model="pageData.categoryId" placeholder="选择分类类型">
+      <el-input size="large" class="input" v-model="pageData.name" placeholder="料理名" @keyup.enter="onSearch" />
+      <el-select size="large" class="input" clearable v-model="pageData.categoryId" placeholder="カテゴリ" @change="onFilterChange">
         <el-option v-for="item in categoryList" :key="item.id" :label="item.name" :value="item.id" />
       </el-select>
-      <el-select class="input" clearable v-model="pageData.status" placeholder="选择菜品状态" size="large">
+      <el-select class="input" clearable v-model="pageData.status" placeholder="販売状態" size="large" @change="onFilterChange">
         <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
       </el-select>
-      <el-button size="large" class="btn" round type="success" @click="showPageList()">查询菜品</el-button>
-      <el-button size="large" class="btn" round type="danger" @click="deleteBatch()">批量删除</el-button>
+      <el-button size="large" class="btn" round type="success" @click="onSearch">検索</el-button>
+      <el-button size="large" class="btn" round type="danger" @click="deleteBatch()">一括削除</el-button>
       <el-button size="large" class="btn" type="primary" @click="to_add_update()">
         <el-icon style="font-size: 15px; margin-right: 10px;">
           <Plus />
-        </el-icon>添加菜品
+        </el-icon>料理を追加
       </el-button>
     </div>
     <el-table class="table_box" ref="multiTableRef" :data="dishList" stripe @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" />
       <!-- <el-table-column prop="id" label="id" /> -->
-      <el-table-column prop="name" label="菜名" align="center" />
-      <el-table-column prop="image" label="图片" align="center">
+      <el-table-column prop="name" label="料理名" align="center" />
+      <el-table-column prop="image" label="画像" align="center">
         <template #default="scope">
           <img v-if="scope.row.image || scope.row.pic" :src="resolveImageUrl(scope.row.image || scope.row.pic)" alt="" />
           <img v-else src="/src/assets/image/user_default.png" alt="" />
         </template>
       </el-table-column>
-      <el-table-column label="详情" width="200px" align="center">
+      <el-table-column label="詳細" width="200px" align="center">
         <template #default="scope">
           {{ scope.row.description || scope.row.detail || '-' }}
         </template>
       </el-table-column>
-      <el-table-column prop="price" label="价格" align="center" />
-      <el-table-column prop="status" label="状态" align="center">
+      <el-table-column prop="price" label="価格" align="center" />
+      <el-table-column prop="status" label="状態" align="center">
         <template #default="scope">
-          <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'" round>
-            {{ scope.row.status === 1 ? '启售' : '停售' }}
+          <el-tag :type="Number(scope.row.status) === 1 ? 'success' : 'danger'" round>
+            {{ Number(scope.row.status) === 1 ? '販売中' : '販売停止' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="categoryId" label="所属分类" align="center">
+      <el-table-column prop="categoryId" label="カテゴリ" align="center">
         <!-- scope 的父组件是 el-table -->
         <template #default="scope">
           <!-- 遍历categoryList，找到categoryId对应的name   ?.防止找不到对应关系而报错 -->
           {{ categoryList.find(item => item.id === scope.row.categoryId)?.name }}
         </template>
       </el-table-column>
-      <el-table-column prop="updateTime" label="上次操作时间" width="180px" align="center" />
-      <el-table-column label="操作" width="200px" align="center">
+      <el-table-column prop="updateTime" label="更新日時" width="180px" align="center" />
+      <el-table-column label="アクション" width="200px" align="center">
         <template #default="scope">
-          <el-button @click="to_add_update(scope.row)" type="primary">修改</el-button>
-          <el-button @click="change_btn(scope.row)" plain :type="scope.row.status === 1 ? 'danger' : 'primary'">
-            {{ scope.row.status === 1 ? '停售' : '起售' }}</el-button>
-          <el-button @click="deleteBatch(scope.row)" type="danger">删除</el-button>
+          <el-button @click="to_add_update(scope.row)" type="primary">編集</el-button>
+          <el-button @click="change_btn(scope.row)" plain :type="Number(scope.row.status) === 1 ? 'danger' : 'primary'">
+            {{ Number(scope.row.status) === 1 ? '販売停止' : '販売再開' }}</el-button>
+          <el-button @click="deleteBatch(scope.row)" type="danger">削除</el-button>
         </template>
       </el-table-column>
       <template #empty>
-        <el-empty description=" 没有数据" />
+        <el-empty description="データがありません" />
       </template>
     </el-table>
 
@@ -254,7 +262,7 @@ const deleteBatch = (row?: any) => {
     <!-- 但是为了监听后还要调用相关函数，看来只能用事件了... -->
     <!-- 有没有办法让v-model的值发生改变时自动触发更新函数？ -->
     <el-pagination class="page" background layout="total, sizes, prev, pager, next, jumper" :total="total"
-      :page-sizes="[2, 4, 6, 8]" v-model:current-page="pageData.page" v-model:page-size="pageData.pageSize"
+      :page-sizes="[10, 20, 30, 50]" v-model:current-page="pageData.page" v-model:page-size="pageData.pageSize"
       @current-change="handleCurrentChange" @size-change="handleSizeChange" />
   </el-card>
 </template>

@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <h2 class="chartTitle">营业额统计</h2>
+    <h2 class="chartTitle">売上集計</h2>
     <div class="charBox">
       <div id="main" style="width: 100%; height: 320px"></div>
     </div>
@@ -27,6 +27,7 @@ const initChart = () => {
   const chartDom = document.getElementById('main') as HTMLElement;
   if (!chartDom) return;
   const myChart = echarts.init(chartDom);
+  const showSymbolForSinglePoint = (props.turnoverdata.dateList || []).length <= 1;
 
   const option = {
     tooltip: {
@@ -68,7 +69,7 @@ const initChart = () => {
     },
     legend: {
       // 对指定的data线，设置不同的legend格式
-      data: ['营业额（元）'],
+      data: ['売上（円）'],
       bottom: '4%',
       icon: 'rect',
       itemWidth: 20,
@@ -80,10 +81,11 @@ const initChart = () => {
     },
     series: [
       {
-        name: '营业额（元）',
+        name: '売上（円）',
         type: 'line',
         smooth: false,
-        showSymbol: false,
+        showSymbol: showSymbolForSinglePoint,
+        showAllSymbol: showSymbolForSinglePoint,
         symbolSize: 10,
         itemStyle: {
           normal: {

@@ -156,7 +156,7 @@ const getTitleNum = (data: number) => {
 }
 
 const nowIndex = ref(0);
-const tabsParam = ['昨日', '近7日', '近30日', '本周', '本月'];
+const tabsParam = ['昨日', '過去7日', '過去30日', '今週', '今月'];
 
 watch(nowIndex, (val) => {
   // 在这里执行 flag 变化时的操作
@@ -172,11 +172,11 @@ const toggleTabs = (index: number) => {
 const handleExport = async () => {
   try {
     const confirm = await ElMessageBox.confirm(
-      '是否导出最近30天运营数据?',
-      '导出数据',
+      '過去30日分の運営データをエクスポートしますか？',
+      'データエクスポート',
       {
-        confirmButtonText: 'OK',
-        cancelButtonText: 'Cancel',
+        confirmButtonText: 'はい',
+        cancelButtonText: 'いいえ',
         type: 'warning',
       }
     );
@@ -188,12 +188,12 @@ const handleExport = async () => {
       var a = document.createElement('a');
       document.body.appendChild(a);
       a.href = url;
-      a.download = '运营数据统计报表.xlsx';
+      a.download = '運営データ集計.xlsx';
       a.click();
       window.URL.revokeObjectURL(url);
       ElMessage({
         type: 'success',
-        message: '导出成功',
+        message: 'エクスポートしました',
       });
     }
   } catch (error) {
@@ -201,13 +201,13 @@ const handleExport = async () => {
     if (error === 'cancel') {
       ElMessage({
         type: 'info',
-        message: '取消导出',
+        message: 'エクスポートをキャンセルしました',
       });
     } else {
       console.error('导出失败:', error);
       ElMessage({
         type: 'error',
-        message: '导出失败',
+        message: 'エクスポートに失敗しました',
       });
     }
   }
@@ -222,10 +222,10 @@ const handleExport = async () => {
         <div class="item">{{ item }}</div>
       </div>
       <div class="get-time">
-        <p> 已选时间：{{ tateData[0] }} 至 {{ tateData[tateData.length - 1] }} </p>
+        <p> 期間：{{ tateData[0] }} 〜 {{ tateData[tateData.length - 1] }} </p>
       </div>
     </div>
-    <el-button type="success" @click="handleExport">数据导出</el-button>
+    <el-button type="success" @click="handleExport">エクスポート</el-button>
   </div>
   <div class="page">
     <el-row :gutter="20">

@@ -23,8 +23,9 @@ export default defineConfig({
         rewrite: path => path.replace(/^\/api/, ''),
         ws: false
       },
+      // 与 Spring Boot 同端口（Jakarta WebSocket 与 HTTP 共用 8080）
       '/ws': {
-        target: 'ws://localhost:8081',
+        target: 'ws://localhost:8080',
         changeOrigin: true,
         ws: true
       }

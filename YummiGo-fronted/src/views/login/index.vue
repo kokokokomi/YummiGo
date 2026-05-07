@@ -16,12 +16,12 @@ const loginRef = ref()
 
 const rules = {
   username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { pattern: /^[a-zA-Z0-9]{1,10}$/, message: '用户名必须是1-10的字母数字', trigger: 'blur' }
+    { required: true, message: 'ユーザー名を入力してください', trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9]{1,10}$/, message: 'ユーザー名は半角英数字1〜10文字', trigger: 'blur' }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { pattern: /^\S{6,15}$/, message: '密码必须是6-15的非空字符', trigger: 'blur' }
+    { required: true, message: 'パスワードを入力してください', trigger: 'blur' },
+    { pattern: /^\S{6,15}$/, message: 'パスワードは6〜15文字の空白以外の文字', trigger: 'blur' }
   ]
 }
 
@@ -40,7 +40,7 @@ const loginFn = async () => {
       return false
     }
     // 登录成功，提示用户
-    ElMessage.success('登录成功')
+    ElMessage.success('ログインしました')
     // 把后端返回的当前登录用户信息(包括token)存储到Pinia里
     userInfoStore.userInfo = res.data
     console.log("用户信息"+userInfoStore.userInfo)
@@ -110,16 +110,16 @@ const loginFn = async () => {
       <span style="--i:61;"></span>
     </div>
     <el-form label-width="0px" class="login-box" :model="form" :rules="rules" ref="loginRef">
-      <div class="title-box">登 录</div>
-      <el-form-item prop="account">
-        <el-input v-model="form.username" placeholder="请输入账号"></el-input>
+      <div class="title-box">ログイン</div>
+      <el-form-item prop="username">
+        <el-input v-model="form.username" placeholder="アカウント"></el-input>
       </el-form-item>
       <el-form-item prop="password">
-        <el-input type="password" v-model="form.password" placeholder="请输入密码"></el-input>
+        <el-input type="password" v-model="form.password" placeholder="パスワード"></el-input>
       </el-form-item>
       <el-form-item class="my-el-form-item">
-        <el-button type="primary" class="btn-login" @click="loginFn">登录</el-button>
-        <el-link type="info" @click="$router.push('/reg')">去注册</el-link>
+        <el-button type="primary" class="btn-login" @click="loginFn">ログイン</el-button>
+        <el-link type="info" @click="$router.push('/reg')">新規登録へ</el-link>
       </el-form-item>
     </el-form>
   </div>

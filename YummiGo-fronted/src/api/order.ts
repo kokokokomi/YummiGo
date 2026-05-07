@@ -17,7 +17,7 @@ export const queryOrderDetailByIdAPI = async (params: { orderId: string | number
     return Promise.resolve({
       data: {
         code: 0,
-        message: '无效的订单ID',
+        message: '無効な注文IDです',
         data: null
       }
     })

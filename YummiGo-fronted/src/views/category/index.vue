@@ -30,11 +30,11 @@ const pageData = reactive({
 const options = [
   {
     value: '1',
-    label: '菜品分类',
+    label: '料理カテゴリ',
   },
   {
     value: '2',
-    label: '套餐分类',
+    label: 'セットメニューカテゴリ',
   }
 ]
 
@@ -90,7 +90,7 @@ const change_btn = async (row: any) => {
   init()
   ElMessage({
     type: 'success',
-    message: '修改成功',
+    message: '更新しました',
   })
 }
 
@@ -99,11 +99,11 @@ const delete_btn = (row: any) => {
   console.log('要删除的行数据')
   console.log(row)
   ElMessageBox.confirm(
-    '该操作会永久删除分类，是否继续？',
-    'Warning',
+    'このカテゴリを削除します。よろしいですか？',
+    '確認',
     {
-      confirmButtonText: 'OK',
-      cancelButtonText: 'Cancel',
+      confirmButtonText: 'はい',
+      cancelButtonText: 'いいえ',
       type: 'warning',
     }
   )
@@ -115,13 +115,13 @@ const delete_btn = (row: any) => {
       init()
       ElMessage({
         type: 'success',
-        message: '删除成功',
+        message: '削除しました',
       })
     })
     .catch(() => {
       ElMessage({
         type: 'info',
-        message: '取消删除',
+        message: '削除をキャンセルしました',
       })
     })
 }
@@ -130,46 +130,46 @@ const delete_btn = (row: any) => {
 <template>
   <el-card>
     <div class="horizontal">
-      <el-input size="large" class="input" v-model="pageData.name" placeholder="请输入分类名" />
-      <el-select size="large" class="input" clearable v-model="pageData.type" placeholder="选择分类类型">
+      <el-input size="large" class="input" v-model="pageData.name" placeholder="カテゴリ名" />
+      <el-select size="large" class="input" clearable v-model="pageData.type" placeholder="種別">
         <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
       </el-select>
-      <el-button size="large" class="btn" round type="success" @click="init()">查询分类</el-button>
+      <el-button size="large" class="btn" round type="success" @click="init()">検索</el-button>
       <el-button size="large" class="btn" type="primary" @click="router.push('/category/add')">
         <el-icon style="font-size: 15px; margin-right: 10px;">
           <Plus />
-        </el-icon>添加分类
+        </el-icon>カテゴリを追加
       </el-button>
     </div>
     <el-table :data="categoryList" stripe>
       <!-- <el-table-column prop="id" label="id" /> -->
-      <el-table-column prop="name" label="分类名" align="center" />
-      <el-table-column prop="type" label="类别" align="center">
+      <el-table-column prop="name" label="カテゴリ名" align="center" />
+      <el-table-column prop="type" label="種別" align="center">
         <template #default="scope">
-          <span>{{ scope.row.type === 1 ? '菜品分类' : '套餐分类' }}</span>
+          <span>{{ scope.row.type === 1 ? '料理カテゴリ' : 'セットメニューカテゴリ' }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="sort" label="排序" align="center" />
-      <el-table-column prop="status" label="状态" align="center">
+      <el-table-column prop="sort" label="表示順" align="center" />
+      <el-table-column prop="status" label="状態" align="center">
         <template #default="scope">
           <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'" round>
-            {{ scope.row.status === 1 ? '启用' : '停用' }}
+            {{ scope.row.status === 1 ? '有効' : '無効' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="updateTime" label="上次操作时间" width="250px" style="font-size: 10px;" align="center" />
-      <el-table-column label="操作" width="250px" align="center">
+      <el-table-column prop="updateTime" label="更新日時" width="250px" style="font-size: 10px;" align="center" />
+      <el-table-column label="アクション" width="250px" align="center">
         <!-- scope 的父组件是 el-table -->
         <template #default="scope">
           <!-- <el-button class="play_btn" @click="playSong(scope.row.audio)">Play</el-button> -->
-          <el-button @click="update_btn(scope.row)" type="primary">修改</el-button>
+          <el-button @click="update_btn(scope.row)" type="primary">編集</el-button>
           <el-button @click="change_btn(scope.row)" plain :type="scope.row.status === 1 ? 'danger' : 'primary'">
-            {{ scope.row.status === 1 ? '停售' : '起售' }}</el-button>
-          <el-button @click="delete_btn(scope.row)" type="danger">删除</el-button>
+            {{ scope.row.status === 1 ? '無効化' : '有効化' }}</el-button>
+          <el-button @click="delete_btn(scope.row)" type="danger">削除</el-button>
         </template>
       </el-table-column>
       <template #empty>
-        <el-empty description=" 没有数据" />
+        <el-empty description="データがありません" />
       </template>
     </el-table>
 

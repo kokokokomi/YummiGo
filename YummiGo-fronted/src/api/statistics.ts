@@ -60,10 +60,6 @@ export const exportInforAPI = () => {
 }
 
 
-
-
-// 逆天数据，不知道是啥...
-
 // 获取当日销售数据 -> 顶部数据
 export const getDataesAPI = (params: any) => {
   return request({

@@ -2,7 +2,7 @@
   <div>
     <div class="container homecon">
       <h2 class="homeTitle homeTitleBtn">
-        订单信息
+        注文情報
         <ul class="conTab">
           <li v-for="(item, index) in tabList" :key="index" :class="activeIndex === index ? 'active' : ''"
             @click="handleClass(index)">
@@ -14,8 +14,8 @@
       <div>
         <div v-if="orderData.length > 0">
           <el-table :data="orderData" stripe class="tableBox" style="width: 100%">
-            <el-table-column prop="number" label="订单号"></el-table-column>
-            <el-table-column label="订单菜品">
+            <el-table-column prop="number" label="注文番号"></el-table-column>
+            <el-table-column label="内容">
               <template #default="scope">
                 <div class="ellipsisHidden">
                   <el-popover placement="top-start" width="200" trigger="hover" :content="scope.row.orderDishes">
@@ -26,7 +26,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="地址" :class-name="dialogOrderStatus === 2 ? 'address' : ''">
+            <el-table-column label="住所" :class-name="dialogOrderStatus === 2 ? 'address' : ''">
               <template #default="scope">
                 <div class="ellipsisHidden">
                   <el-popover placement="top-start" width="200" trigger="hover" :content="scope.row.address">
@@ -37,10 +37,10 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="estimatedDeliveryTime" label="预计送达时间" sortable class-name="orderTime"
+            <el-table-column prop="estimatedDeliveryTime" label="お届け予定" sortable class-name="orderTime"
               min-width="130"></el-table-column>
-            <el-table-column prop="amount" label="实收金额"></el-table-column>
-            <el-table-column label="备注">
+            <el-table-column prop="amount" label="金額"></el-table-column>
+            <el-table-column label="備考">
               <template #default="scope">
                 <div class="ellipsisHidden">
                   <el-popover placement="top-start" width="200" trigger="hover" :content="scope.row.remark">
@@ -51,36 +51,36 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="tablewareNumber" label="餐具数量" min-width="80" align="center" v-if="status === 3">
+            <el-table-column prop="tablewareNumber" label="カトラリー" min-width="80" align="center" v-if="status === 3">
               <template #default="scope">
-                {{ scope.row.tablewareNumber === -1 ? '无需餐具' : scope.row.tablewareNumber === 0 ? '按餐量提供' :
+                {{ scope.row.tablewareNumber === -1 ? '不要' : scope.row.tablewareNumber === 0 ? '人数分' :
                   scope.row.tablewareNumber }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" align="center"
+            <el-table-column label="アクション" align="center"
               :class-name="dialogOrderStatus === 0 ? 'operate' : 'otherOperate'" min-width="120px">
               <template #default="scope">
                 <div class="before">
                   <el-button v-if="scope.row.status === 2" type="primary" link @click="orderAccept(scope.row)">
-                    接单
+                    受付
                   </el-button>
                   <el-button v-if="scope.row.status === 3" type="primary" link
                     @click="deliveryOrComplete(3, scope.row.id)">
-                    派送
+                    配達へ
                   </el-button>
                 </div>
                 <div class="middle">
                   <el-button v-if="scope.row.status === 2" type="danger" link @click="orderReject(scope.row)">
-                    拒单
+                    拒否
                   </el-button>
                   <el-button v-if="[1, 3, 4, 5].includes(scope.row.status)" type="danger" link
                     @click="cancelOrder(scope.row)">
-                    取消
+                    キャンセル
                   </el-button>
                 </div>
                 <div class="after">
                   <el-button type="primary" link @click="goDetail(scope.row.id, scope.row.status, scope.row)">
-                    查看
+                    詳細
                   </el-button>
                 </div>
               </template>
@@ -95,13 +95,13 @@
     </div>
 
     <!-- 查看弹框部分 -->
-    <el-dialog title="订单信息" v-model="dialogVisible" width="53%" :before-close="handleClose" class="order-dialog">
+    <el-dialog title="注文情報" v-model="dialogVisible" width="53%" :before-close="handleClose" class="order-dialog">
       <el-scrollbar style="height: 100%">
         <div class="order-top">
           <div>
             <div style="display: inline-block">
-              <label style="font-size: 16px">订单号：</label>
-              <div class="order-num">{{ diaForm!.number }}</div>
+              <label style="font-size: 16px">注文番号：</label>
+              <div class="order-num">{{ diaForm?.number }}</div>
             </div>
             <div style="display: inline-block" class="order-status"
               :class="{ status3: [3, 4].includes(dialogOrderStatus) }">
@@ -111,31 +111,31 @@
               }}
             </div>
           </div>
-          <p><label>下单时间：</label>{{ diaForm!.orderTime }}</p>
+          <p><label>注文日時：</label>{{ diaForm?.orderTime }}</p>
         </div>
 
         <div class="order-middle">
           <div class="user-info">
             <div class="user-info-box">
               <div class="user-name">
-                <label>用户名：</label>
-                <span>{{ diaForm!.consignee }}</span>
+                <label>お客様名：</label>
+                <span>{{ diaForm?.snapshotConsignee }}</span>
               </div>
               <div class="user-phone">
-                <label>手机号：</label>
-                <span>{{ diaForm!.phone }}</span>
+                <label>電話番号：</label>
+                <span>{{ diaForm?.snapshotPhone }}</span>
               </div>
               <div v-if="[2, 3, 4, 5].includes(dialogOrderStatus)" class="user-getTime">
-                <label>{{ dialogOrderStatus === 5 ? '送达时间：' : '预计送达时间：' }}</label>
-                <span>{{ dialogOrderStatus === 5 ? diaForm!.deliveryTime : diaForm!.estimatedDeliveryTime }}</span>
+                <label>{{ dialogOrderStatus === 5 ? '配達完了：' : 'お届け予定：' }}</label>
+                <span>{{ dialogOrderStatus === 5 ? diaForm?.deliveryTime : diaForm!.estimatedDeliveryTime }}</span>
               </div>
               <div class="user-address">
-                <label>地址：</label>
-                <span>{{ diaForm!.address }}</span>
+                <label>住所：</label>
+                <span>{{ diaForm!.snapshotAddress }}</span>
               </div>
             </div>
             <div class="user-remark" :class="{ orderCancel: dialogOrderStatus === 6 }">
-              <div>{{ dialogOrderStatus === 6 ? '取消原因' : '备注' }}</div>
+              <div>{{ dialogOrderStatus === 6 ? 'キャンセル理由' : '備考' }}</div>
               <span>{{
                 dialogOrderStatus === 6
                   ? diaForm!.cancelReason || diaForm!.rejectionReason
@@ -145,7 +145,7 @@
           </div>
 
           <div class="dish-info">
-            <div class="dish-label">菜品</div>
+            <div class="dish-label">商品</div>
             <div class="dish-list">
               <div v-for="(item, index) in diaForm!.orderDetailList" :key="index" class="dish-item">
                 <span class="dish-name">{{ item.name }}</span>
@@ -154,31 +154,32 @@
               </div>
             </div>
             <div class="dish-all-amount">
-              <label>菜品小计</label>
-              <span>￥{{ (diaForm!.amount - 6 - diaForm!.packAmount).toFixed(2) }}</span>
+              <label>小計</label>
+              <span>￥{{ (diaForm!.amount - 6 - (diaForm!.packAmount ?? 0)).toFixed(2) }}</span>
             </div>
           </div>
         </div>
 
         <div class="order-bottom">
           <div class="amount-info">
-            <div class="amount-label">费用</div>
+            <div class="amount-label">料金</div>
             <div class="amount-list">
               <div class="dish-amount">
-                <span class="amount-name">菜品小计：</span>
-                <span class="amount-price">￥{{ (((diaForm!.amount - 6 - diaForm!.packAmount)
-                  * 100) / 100).toFixed(2) }}</span>
+                <span class="amount-name">小計：</span>
+                <span class="amount-price">￥{{
+                  ((((diaForm!.amount - 6 - (diaForm!.packAmount ?? 0)) * 100) / 100)).toFixed(2)
+                }}</span>
               </div>
               <div class="send-amount">
-                <span class="amount-name">派送费：</span>
+                <span class="amount-name">配達料：</span>
                 <span class="amount-price">￥6.00</span>
               </div>
               <div class="pack-amount">
-                <span class="amount-name">餐盒费：</span>
-                <span class="amount-price">￥{{ ((diaForm!.packAmount * 100) / 100).toFixed(2) }}</span>
+                <span class="amount-name">梱包料：</span>
+                <span class="amount-price">￥{{ (((diaForm!.packAmount ?? 0) * 100) / 100).toFixed(2) }}</span>
               </div>
               <div class="all-amount">
-                <span class="amount-name">实收金额：</span>
+                <span class="amount-name">合計：</span>
                 <span class="amount-price">￥{{ ((diaForm!.amount * 100) / 100).toFixed(2) }}</span>
               </div>
             </div>
@@ -187,42 +188,39 @@
       </el-scrollbar>
       <template #footer>
         <span v-if="dialogOrderStatus !== 6" class="dialog-footer">
-          <el-checkbox v-if="dialogOrderStatus === 2 && status === 2" v-model="isAutoNext">处理完自动跳转下一条</el-checkbox>
-          <el-button v-if="dialogOrderStatus === 2" @click="orderReject(my_row), (isTableOperateBtn = false)">拒
-            单</el-button>
+          <el-checkbox v-if="dialogOrderStatus === 2 && status === 2" v-model="isAutoNext">処理後、次の注文へ自動表示</el-checkbox>
+          <el-button v-if="dialogOrderStatus === 2" @click="orderReject(my_row), (isTableOperateBtn = false)">拒否</el-button>
           <el-button v-if="dialogOrderStatus === 2" type="primary"
-            @click="orderAccept(my_row), (isTableOperateBtn = false)">接 单</el-button>
+            @click="orderAccept(my_row), (isTableOperateBtn = false)">受付</el-button>
 
-          <el-button v-if="[1, 3, 4, 5].includes(dialogOrderStatus)" @click="dialogVisible = false">返 回</el-button>
-          <el-button v-if="dialogOrderStatus === 3" type="primary" @click="deliveryOrComplete(3, my_row!.id)">派
-            送</el-button>
-          <el-button v-if="dialogOrderStatus === 4" type="primary" @click="deliveryOrComplete(4, my_row!.id)">完
-            成</el-button>
-          <el-button v-if="[1].includes(dialogOrderStatus)" type="primary" @click="cancelOrder(my_row)">取消订单</el-button>
+          <el-button v-if="[1, 3, 4, 5].includes(dialogOrderStatus)" @click="dialogVisible = false">閉じる</el-button>
+          <el-button v-if="dialogOrderStatus === 3" type="primary" @click="deliveryOrComplete(3, my_row!.id)">配達へ</el-button>
+          <el-button v-if="dialogOrderStatus === 4" type="primary" @click="deliveryOrComplete(4, my_row!.id)">完了</el-button>
+          <el-button v-if="[1].includes(dialogOrderStatus)" type="primary" @click="cancelOrder(my_row)">注文をキャンセル</el-button>
         </span>
       </template>
     </el-dialog>
 
     <!-- 点击拒单，弹出 填拒单/取消原因 的弹窗 -->
-    <el-dialog :title="cancelDialogTitle + '原因'" v-model="cancelDialogVisible" width="42%"
+    <el-dialog :title="cancelDialogTitle + '理由'" v-model="cancelDialogVisible" width="42%"
       :before-close="() => ((cancelDialogVisible = false), (cancelReason = ''))" class="cancelDialog">
       <el-form label-width="90px">
-        <el-form-item :label="cancelDialogTitle + '原因：'">
-          <el-select v-model="cancelReason" :placeholder="'请选择' + cancelDialogTitle + '原因'">
-            <el-option v-for="(item, index) in cancelDialogTitle === '取消'
+        <el-form-item :label="cancelDialogTitle + '理由'">
+          <el-select v-model="cancelReason" :placeholder="cancelDialogTitle + 'の理由を選択'">
+            <el-option v-for="(item, index) in cancelDialogTitle === DLG_CANCEL
               ? cancelrReasonList
               : rejectReasonList" :key="index" :label="item.label" :value="item.label" />
           </el-select>
         </el-form-item>
-        <el-form-item v-if="cancelReason === '自定义原因'" label="原因：">
-          <el-input v-model.trim="remark" type="textarea" :placeholder="'请填写您' + cancelDialogTitle + '的原因（限20字内）'"
+        <el-form-item v-if="cancelReason === REASON_CUSTOM" label="詳細">
+          <el-input v-model.trim="remark" type="textarea" :placeholder="cancelDialogTitle + 'の理由（20文字以内）'"
             maxlength="20" />
         </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="; (cancelDialogVisible = false), (cancelReason = '')">取 消</el-button>
-          <el-button type="primary" @click="confirmCancel">确 定</el-button>
+          <el-button @click="; (cancelDialogVisible = false), (cancelReason = '')">キャンセル</el-button>
+          <el-button type="primary" @click="confirmCancel">確定</el-button>
         </span>
       </template>
     </el-dialog>
@@ -244,6 +242,11 @@ import {
 } from '@/api/order'
 import type { Order, OrderVO } from '@/types/order'
 import { ElMessage } from 'element-plus'
+
+/** ダイアログタイトル・理由比較用（注文ページと整合） */
+const DLG_CANCEL = 'キャンセル'
+const DLG_REJECT = '拒否'
+const REASON_CUSTOM = 'カスタム'
 
 const router = useRouter()
 
@@ -270,33 +273,33 @@ const isTableOperateBtn = ref<boolean>(true);
 
 // 拒单原因列表
 const rejectReasonList = reactive([
-  { value: 1, label: '订单量较多，暂时无法接单', },
-  { value: 2, label: '菜品已销售完，暂时无法接单', },
-  { value: 3, label: '餐厅已打烊，暂时无法接单', },
-  { value: 0, label: '自定义原因', },
+  { value: 1, label: '注文が集中しているため一時受付できません', },
+  { value: 2, label: '該当商品は売り切れのため受付できません', },
+  { value: 3, label: '閉店のため受付できません', },
+  { value: 0, label: REASON_CUSTOM, },
 ])
 // 取消订单原因列表
 const cancelrReasonList = reactive([
-  { value: 1, label: '订单量较多，暂时无法接单' },
-  { value: 2, label: '菜品已销售完，暂时无法接单', },
-  { value: 3, label: '骑手不足无法配送', },
-  { value: 4, label: '客户电话取消', },
-  { value: 0, label: '自定义原因', },
+  { value: 1, label: '注文が集中しているため一時受付できません' },
+  { value: 2, label: '該当商品は売り切れのため受付できません', },
+  { value: 3, label: '配達員不足のため対応できません', },
+  { value: 4, label: 'お客様都合（電話）', },
+  { value: 0, label: REASON_CUSTOM, },
 ])
 
 const orderList = [
-  { label: '全部订单', value: 0 },
-  { label: '待付款', value: 1 },
-  { label: '待接单', value: 2 },
-  { label: '待派送', value: 3 },
-  { label: '派送中', value: 4 },
-  { label: '已完成', value: 5 },
-  { label: '已取消', value: 6 },
+  { label: 'すべて', value: 0 },
+  { label: '支払い待ち', value: 1 },
+  { label: '受付待ち', value: 2 },
+  { label: '配達待ち', value: 3 },
+  { label: '配達中', value: 4 },
+  { label: '完了', value: 5 },
+  { label: 'キャンセル', value: 6 },
 ];
 
 const tabList = computed(() => [
-  { label: '待接单', value: 2, num: orderStatics.value.toBeConfirmed },
-  { label: '待派送', value: 3, num: orderStatics.value.confirmed },
+  { label: '受付待ち', value: 2, num: orderStatics.value.toBeConfirmed },
+  { label: '配達待ち', value: 3, num: orderStatics.value.confirmed },
 ]);
 
 // 获取订单数据
@@ -325,7 +328,7 @@ const orderAccept = async (row: any) => {
     orderId.value = ''
     dialogVisible.value = false
     await getOrderListData(status.value)
-    ElMessage.success('接单成功')
+    ElMessage.success('注文を受付ました')
   } else {
     throw new Error(res.data.msg)
   }
@@ -335,7 +338,7 @@ const cancelOrder = (row: any) => {
   cancelDialogVisible.value = true;
   orderId.value = row.id;
   dialogOrderStatus.value = row.status;
-  cancelDialogTitle.value = '取消';
+  cancelDialogTitle.value = DLG_CANCEL;
   dialogVisible.value = false;
   cancelReason.value = '';
 };
@@ -344,7 +347,7 @@ const orderReject = (row: any) => {
   cancelDialogVisible.value = true;
   orderId.value = row.id;
   dialogOrderStatus.value = row.status;
-  cancelDialogTitle.value = '拒绝';
+  cancelDialogTitle.value = DLG_REJECT;
   dialogVisible.value = false;
   cancelReason.value = '';
 };
@@ -352,21 +355,21 @@ const orderReject = (row: any) => {
 const confirmCancel = async () => {
   if (!cancelReason.value) {
     return;
-  } else if (cancelReason.value === '自定义原因' && !remark.value) {
+  } else if (cancelReason.value === REASON_CUSTOM && !remark.value) {
     return;
   }
   // 判断是取消还是拒单
-  const action = cancelDialogTitle.value === '取消' ? orderCancelAPI : orderRejectAPI;
+  const action = cancelDialogTitle.value === DLG_CANCEL ? orderCancelAPI : orderRejectAPI;
   const payload = {
     id: orderId.value,
-    [cancelDialogTitle.value === '取消' ? 'cancelReason' : 'rejectionReason']: cancelReason.value === '自定义原因' ? remark.value : cancelReason.value,
+    [cancelDialogTitle.value === DLG_CANCEL ? 'cancelReason' : 'rejectionReason']: cancelReason.value === REASON_CUSTOM ? remark.value : cancelReason.value,
   };
   // 请求
   const { data: res } = await action(payload)
   if (res.code === 0) {
     cancelDialogVisible.value = false;
     orderId.value = '';
-    ElMessage.success(`${cancelDialogTitle.value}成功`)
+    ElMessage.success(cancelDialogTitle.value === DLG_CANCEL ? 'キャンセルしました' : '拒否しました')
     getOrderListData(status.value);
   } else {
     throw new Error(res.msg)
@@ -374,7 +377,7 @@ const confirmCancel = async () => {
 };
 
 // 派送或完成订单
-const deliveryOrComplete = async (status1: number, id: number) => {
+const deliveryOrComplete = async (status1: number, id: string | number) => {
   const action = status1 === 3 ? deliveryOrderAPI : completeOrderAPI;
   const params = { status1, id };
 
@@ -382,7 +385,7 @@ const deliveryOrComplete = async (status1: number, id: number) => {
   if (res.code === 0) {
     orderId.value = ''
     dialogVisible.value = false
-    ElMessage.success(`${status1 === 3 ? '派送成功' : '订单完成'}`)
+    ElMessage.success(`${status1 === 3 ? '配達に回しました' : '注文を完了しました'}`)
     getOrderListData(status.value)
   } else {
     // Handle error

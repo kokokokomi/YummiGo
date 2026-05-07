@@ -1,9 +1,9 @@
 <template>
   <div class="container">
     <h2 class="homeTitle">
-      套餐总览
+      セット一覧
       <div class="more">
-        <router-link to="setmeal">套餐管理</router-link>
+        <router-link to="setmeal">セット管理</router-link>
         <el-icon>
           <ArrowRight />
         </el-icon>
@@ -16,7 +16,7 @@
             <el-icon>
               <Finished />
             </el-icon>
-            已启售
+            販売中
           </span>
           <span class="num">{{ setMealData.sold }}</span>
         </li>
@@ -25,7 +25,7 @@
             <el-icon>
               <Lock />
             </el-icon>
-            已停售
+            販売停止
           </span>
           <span class="num">{{ setMealData.discontinued }}</span>
         </li>
@@ -34,7 +34,7 @@
             <el-icon>
               <CirclePlus />
             </el-icon>
-            <p>新增套餐</p>
+            <p>セットを追加</p>
           </router-link>
         </li>
       </ul>

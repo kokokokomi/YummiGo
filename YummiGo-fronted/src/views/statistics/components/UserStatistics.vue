@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <h2 class="chartTitle">用户统计</h2>
+    <h2 class="chartTitle">ユーザー集計</h2>
     <div class="charBox">
       <div id="usermain" style="width: 100%; height: 320px"></div>
     </div>
@@ -24,6 +24,7 @@ const props = defineProps<{
 const initChart = () => {
   const chartDom = document.getElementById('usermain') as HTMLElement;
   const myChart = echarts.init(chartDom);
+  const showSymbolForSinglePoint = (props.userdata.dateList || []).length <= 1;
   const option = {
     tooltip: {
       trigger: 'axis',
@@ -85,10 +86,11 @@ const initChart = () => {
     },
     series: [
       {
-        name: '用户总量（个）',
+        name: 'ユーザー数（人）',
         type: 'line',
         smooth: false,
-        showSymbol: false,
+        showSymbol: showSymbolForSinglePoint,
+        showAllSymbol: showSymbolForSinglePoint,
         symbolSize: 10,
         itemStyle: {
           normal: {
@@ -120,10 +122,11 @@ const initChart = () => {
         data: props.userdata.totalUserList,
       },
       {
-        name: '新增用户（个）',
+        name: '新規ユーザー（人）',
         type: 'line',
         smooth: false,
-        showSymbol: false,
+        showSymbol: showSymbolForSinglePoint,
+        showAllSymbol: showSymbolForSinglePoint,
         symbolSize: 10,
         itemStyle: {
           normal: {

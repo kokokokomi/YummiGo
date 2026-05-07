@@ -15,11 +15,11 @@ const form = reactive({
 const options = [
   {
     value: '1',
-    label: '菜品分类',
+    label: '料理カテゴリ',
   },
   {
     value: '2',
-    label: '套餐分类',
+    label: 'セットメニューカテゴリ',
   }
 ]
 
@@ -59,7 +59,7 @@ const submit = async () => {
       }
       // 然后进行 消息提示，页面跳转 等操作
       ElMessage({
-        message: '新增分类成功',
+        message: 'カテゴリを追加しました',
         type: 'success',
       })
       router.push({
@@ -88,24 +88,24 @@ init()
 </script>
 
 <template>
-  <h1>添加分类页</h1>
+  <h1>カテゴリを追加</h1>
   <el-card>
     <el-form :model="form" :rules="rules" ref="addRef">
       <el-form-item label="名称" :label-width="formLabelWidth" prop="name">
         <el-input v-model="form.name" autocomplete="off" />
       </el-form-item>
-      <el-form-item label="类型" :label-width="formLabelWidth" prop="type">
-        <el-select clearable v-model="form.type" placeholder="选择分类类型">
+      <el-form-item label="種別" :label-width="formLabelWidth" prop="type">
+        <el-select clearable v-model="form.type" placeholder="種別を選択">
           <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
-      <el-form-item label="排序" :label-width="formLabelWidth" prop="sort">
+      <el-form-item label="表示順" :label-width="formLabelWidth" prop="sort">
         <el-input v-model="form.sort" autocomplete="off" />
       </el-form-item>
     </el-form>
     <el-form-item>
-      <el-button class="submit_btn" type="success" @click="submit">添加</el-button>
-      <el-button class="cancel_btn" type="info" plain @click="cancel">取消</el-button>
+      <el-button class="submit_btn" type="success" @click="submit">追加</el-button>
+      <el-button class="cancel_btn" type="info" plain @click="cancel">キャンセル</el-button>
     </el-form-item>
   </el-card>
 </template>

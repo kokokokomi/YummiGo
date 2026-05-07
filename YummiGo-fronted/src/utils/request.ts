@@ -52,7 +52,7 @@ instance.interceptors.request.use(
 //       // 无效的 token (不存在，过期，伪造或者被修改)
 //       // token没用了，把 Pinia 中的一切重置为空，并跳转到登录页面(相当于没token的状态)
 //       userInfoStore.userInfo = null
-//       ElMessage.error('用户身份已过期~')
+//       ElMessage.error('ログインの有効期限が切れました。再度ログインしてください')
 //       router.push('/login') // js无法获取this.$router，所以要引入router来跳转
 //     }
 //     return Promise.reject(error)
@@ -66,7 +66,7 @@ instance.interceptors.response.use(
     if (data && typeof data === 'object' && 'code' in data) {
       // 失败才提示
       if (data.code !== 1) {
-        ElMessage.error(data.message || '请求失败')
+        ElMessage.error(data.message || 'リクエストに失敗しました')
       }
     }
     return response
@@ -75,7 +75,7 @@ instance.interceptors.response.use(
     const userInfoStore = useUserInfoStore()
     if (error?.response?.status === 401) {
       userInfoStore.userInfo = null
-      ElMessage.error('用户身份已过期~')
+      ElMessage.error('ログインの有効期限が切れました。再度ログインしてください')
       router.push('/login')
     }
     return Promise.reject(error)

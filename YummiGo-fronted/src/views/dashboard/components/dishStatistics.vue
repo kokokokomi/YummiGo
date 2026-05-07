@@ -1,9 +1,9 @@
 <template>
   <div class="container">
     <h2 class="homeTitle">
-      菜品总览
+      料理一覧
       <div class="more">
-        <router-link to="dish">菜品管理</router-link>
+        <router-link to="dish">料理管理</router-link>
         <el-icon>
           <ArrowRight />
         </el-icon>
@@ -16,7 +16,7 @@
             <el-icon>
               <Finished />
             </el-icon>
-            已启售
+            販売中
           </span>
           <span class="num">{{ dishesData.sold }}</span>
         </li>
@@ -25,7 +25,7 @@
             <el-icon>
               <Lock />
             </el-icon>
-            已停售
+            販売停止
           </span>
           <span class="num">{{ dishesData.discontinued }}</span>
         </li>
@@ -34,7 +34,7 @@
             <el-icon>
               <CirclePlus />
             </el-icon>
-            <p>新增菜品</p>
+            <p>料理を追加</p>
           </router-link>
         </li>
       </ul>

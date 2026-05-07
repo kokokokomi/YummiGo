@@ -64,7 +64,7 @@ const status_active = ref(0) // 单选框绑定的动态值
 const samePwd = (rules: any, value: any, callback: any) => {
   if (value !== form.newPwd) {
     // 如果验证失败，则调用 回调函数时，指定一个 Error 对象。
-    callback(new Error('两次输入的密码不一致!'))
+    callback(new Error('新しいパスワードが一致しません'))
   } else {
     // 如果验证成功，则直接调用 callback 回调函数即可。
     callback()
@@ -72,20 +72,20 @@ const samePwd = (rules: any, value: any, callback: any) => {
 }
 const rules = { // 表单的规则检验对象
   oldPwd: [
-    { required: true, message: '请输入原密码', trigger: 'blur' },
+    { required: true, message: '現在のパスワードを入力してください', trigger: 'blur' },
     {
       pattern: /^[a-zA-Z0-9]{1,10}$/,
-      message: '原密码必须是1-10的大小写字母数字',
+      message: '現在のパスワードは半角英数字1〜10文字',
       trigger: 'blur'
     }
   ],
   newPwd: [
-    { required: true, message: '请输入新密码', trigger: 'blur' },
-    { pattern: /^\S{6,15}$/, message: '新密码必须是6-15的非空字符', trigger: 'blur' }
+    { required: true, message: '新しいパスワードを入力してください', trigger: 'blur' },
+    { pattern: /^\S{6,15}$/, message: '新しいパスワードは6〜15文字（空白以外）', trigger: 'blur' }
   ],
   rePwd: [
-    { required: true, message: '请再次输入新密码', trigger: 'blur' },
-    { pattern: /^\S{6,15}$/, message: '新密码必须是6-15的非空字符', trigger: 'blur' },
+    { required: true, message: '新しいパスワードを再度入力してください', trigger: 'blur' },
+    { pattern: /^\S{6,15}$/, message: '新しいパスワードは6〜15文字（空白以外）', trigger: 'blur' },
     { validator: samePwd, trigger: 'blur' }
   ]
 }
@@ -113,7 +113,7 @@ const getActiveAside = () => {
 const cancelStatus = () => {
   ElMessage({
     type: 'info',
-    message: '已取消修改',
+    message: '変更をキャンセルしました',
   })
   dialogStatusVisible.value = false
 }
@@ -121,7 +121,7 @@ const cancelStatus = () => {
 const cancelForm = () => {
   ElMessage({
     type: 'info',
-    message: '已取消修改',
+    message: '変更をキャンセルしました',
   })
   dialogFormVisible.value = false
 }
@@ -142,11 +142,11 @@ const fixStatus = async () => {
     
     //关闭弹窗并提示
     dialogStatusVisible.value = false
-    ElMessage.success('修改成功')
+    ElMessage.success('変更しました')
     
   } catch (error) {
     console.error('修改状态出错:', error)
-    ElMessage.error('修改失败，请重试')
+    ElMessage.error('変更に失敗しました。再試行してください')
   }
 }
 
@@ -164,7 +164,7 @@ const fixPwd = async () => {
     if (res.code != 0) return   // 密码错误信息会在相应拦截器中捕获并提示
     ElMessage({
       type: 'success',
-      message: '修改成功',
+      message: 'パスワードを変更しました',
     })
     dialogFormVisible.value = false
   } else {
@@ -175,18 +175,18 @@ const fixPwd = async () => {
 const quitFn = () => {
   // 为了让用户体验更好，来个确认提示框
   ElMessageBox.confirm(
-    '走了，爱是会消失的吗?',
-    '退出登录',
+    'ログアウトしますか？',
+    'ログアウト',
     {
-      confirmButtonText: 'OK',
-      cancelButtonText: 'Cancel',
+      confirmButtonText: 'はい',
+      cancelButtonText: 'いいえ',
       type: 'warning',
     }
   )
     .then(() => {
       ElMessage({
         type: 'success',
-        message: '退出成功',
+        message: 'ログアウトしました',
       })
       // 清除用户信息，包括token
       userInfoStore.userInfo = null
@@ -196,7 +196,7 @@ const quitFn = () => {
     .catch(() => {
       ElMessage({
         type: 'info',
-        message: '已取消退出',
+        message: 'ログアウトをキャンセルしました',
       })
     })
 }
@@ -208,16 +208,19 @@ const shopShow = ref(false)
 const audio1 = ref<HTMLAudioElement | null>(null)
 const audio2 = ref<HTMLAudioElement | null>(null)
 
+  //window.location.host自动获取当前网站的域名ip
 const webSocket = () => {
   const clientId = Math.random().toString(36).slice(2)
-  const socketUrl = 'ws://localhost:8081/ws/' + clientId
+  // 開発時は Vite が /ws を Spring(8080) にプロキシ。本番は同一オリジンまたは Nginx で /ws をバックエンドへ
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const socketUrl = `${protocol}//${window.location.host}/ws/${clientId}`
   console.log('socketUrl', socketUrl)
 
   if (typeof WebSocket == 'undefined') {
-    console.log('当前浏览器无法接收实时报警信息，请使用谷歌浏览器！')
+    console.log('このブラウザではリアルタイム通知を利用できません。Chrome をご利用ください。')
     ElNotification({
-      title: '提示',
-      message: '当前浏览器无法接收实时报警信息，请使用谷歌浏览器！',
+      title: 'お知らせ',
+      message: 'このブラウザではリアルタイム通知を利用できません。Chrome をご利用ください。',
       type: 'warning',
       duration: 0,
     })
@@ -234,17 +237,23 @@ const webSocket = () => {
       audio2.value!.currentTime = 0
       // 解析服务器通过WebSocket发送的消息
       const jsonMsg = JSON.parse(msg.data)
+      // event === stripe_payment_success は Stripe Webhook 落库后推送；その他 type 1/2 は従来ロジック
       if (jsonMsg.type === 1) {
         audio1.value!.play()
       } else if (jsonMsg.type === 2) {
         audio2.value!.play()
       }
+      const payDone = jsonMsg.event === 'stripe_payment_success'
+      const title =
+        payDone ? '支払い完了' : jsonMsg.type === 1 ? '受付待ち' : '催促'
+      const htmlMessage =
+        jsonMsg.type === 1
+          ? `<span>${payDone ? '<b>Stripe 決済済み</b> ' : ''}<span style="color:#419EFF">注文対応が必要です</span>、${jsonMsg.content}、すぐに注文を確認してください</span>`
+          : `${jsonMsg.content}<span style='color:#419EFF;cursor: pointer'>処理する</span>`
       // 右上角弹窗提示
       ElNotification({
-        title: jsonMsg.type === 1 ? '受付待ち' : '催促',
-        message: jsonMsg.type === 1
-          ? `<span>一つ<span style="color:#419EFF">注文が保留中です</span>,${jsonMsg.content},すぐに注文を受けてください</span>`
-          : `${jsonMsg.content}<span style='color:#419EFF;cursor: pointer'>処理する</span>`,
+        title,
+        message: htmlMessage,
         duration: 0,
         dangerouslyUseHTMLString: true,
         onClick: () => {
@@ -259,8 +268,8 @@ const webSocket = () => {
     }
     websocket.value.onerror = () => {
       ElNotification({
-        title: '错误',
-        message: '服务器错误，无法接收实时报警信息',
+        title: 'エラー',
+        message: 'サーバーエラーによりリアルタイム通知を受信できません',
         type: 'error',
         duration: 0,
       })
@@ -289,8 +298,7 @@ const fetchShopStatus = async () => {
 onMounted(() => {
   document.addEventListener('click', handleClose)
   fetchShopStatus()
-  // getStatus()
-  // webSocket()
+  webSocket()
 })
 
 onBeforeUnmount(() => {
@@ -358,7 +366,7 @@ onBeforeUnmount(() => {
         </div>
         <el-dropdown style="float: right">
           <el-button type="primary">
-            {{ userInfoStore.userInfo ? userInfoStore.userInfo.userName : '未登录' }}
+            {{ userInfoStore.userInfo ? userInfoStore.userInfo.userName : '未ログイン' }}
             <el-icon class="arrow-down-icon"><arrow-down /></el-icon>
           </el-button>
           <template #dropdown>

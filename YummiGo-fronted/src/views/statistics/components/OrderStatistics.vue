@@ -1,20 +1,20 @@
 <template>
   <div class="container">
-    <h2 class="chartTitle">订单统计</h2>
+    <h2 class="chartTitle">注文集計</h2>
     <div class="charBox">
       <div class="orderProportion">
         <div>
-          <p class="simple">订单完成率</p>
+          <p class="simple">注文完了率</p>
           <p class="deep">{{ (orderdata.orderCompletionRate * 100).toFixed(1) }}%</p>
         </div>
         <div class="symbol">=</div>
         <div>
-          <p class="simple">有效订单</p>
+          <p class="simple">有効注文</p>
           <p class="deep">{{ orderdata.validOrderCount }}</p>
         </div>
         <div class="symbol">/</div>
         <div>
-          <p class="simple">订单总数</p>
+          <p class="simple">注文合計</p>
           <p class="deep">{{ orderdata.totalOrderCount }}</p>
         </div>
       </div>
@@ -51,6 +51,7 @@ const props = defineProps<{
 const initChart = () => {
   const chartDom = document.getElementById('ordermain') as HTMLElement;
   const myChart = echarts.init(chartDom);
+  const showSymbolForSinglePoint = (props.orderdata.data.dateList || []).length <= 1;
   const option = {
     tooltip: {
       trigger: 'axis',
@@ -113,10 +114,11 @@ const initChart = () => {
     },
     series: [
       {
-        name: '订单总数（个）',
+        name: '注文数（件）',
         type: 'line',
         smooth: false,
-        showSymbol: false,
+        showSymbol: showSymbolForSinglePoint,
+        showAllSymbol: showSymbolForSinglePoint,
         symbolSize: 10,
         itemStyle: {
           normal: {
@@ -148,10 +150,11 @@ const initChart = () => {
         data: props.orderdata.data.orderCountList,
       },
       {
-        name: '有效订单（个）',
+        name: '有効注文（件）',
         type: 'line',
         smooth: false,
-        showSymbol: false,
+        showSymbol: showSymbolForSinglePoint,
+        showAllSymbol: showSymbolForSinglePoint,
         symbolSize: 10,
         itemStyle: {
           normal: {
