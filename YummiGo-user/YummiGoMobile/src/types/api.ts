@@ -137,6 +137,8 @@ export type OrderVO = {
   packAmount?: number;
   estimatedDeliveryTime?: string;
   deliveryTime?: string;
+  rejectionReason?: string;
+  cancelReason?: string;
   orderDetailList: OrderDetail[];
 };
 

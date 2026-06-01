@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import * as Linking from "expo-linking";
@@ -6,6 +6,11 @@ import * as WebBrowser from "expo-web-browser";
 import { cancelOrder, createOrderPayment, getOrderById, remindOrder } from "@/src/api/order";
 import { normalizeMajorAmount, toMinorUnit } from "@/src/lib/currency";
 import type { OrderVO } from "@/src/types/api";
+import {
+  getMerchantRejectReason,
+  shouldNotifyMerchantReject,
+  showMerchantRejectAlert,
+} from "@/src/lib/orderRejection";
 
 export default function OrderDetailScreen() {
   const { id, countdownStart } = useLocalSearchParams<{ id?: string; countdownStart?: string }>();
@@ -13,6 +18,8 @@ export default function OrderDetailScreen() {
   const [order, setOrder] = useState<OrderVO | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
+  const lastStatusRef = useRef<number | undefined>(undefined);
+  const rejectAlertShownRef = useRef(false);
 
   const parseOrderTimeMs = useCallback((raw?: string) => {
     if (!raw) return NaN;
@@ -65,17 +72,46 @@ export default function OrderDetailScreen() {
     return Math.min(...candidates);
   }, [parseOrderTimeMs]);
 
+  const applyOrderUpdate = useCallback((data: OrderVO, notifyReject = true) => {
+    const prevStatus = lastStatusRef.current;
+    if (
+      notifyReject &&
+      !rejectAlertShownRef.current &&
+      shouldNotifyMerchantReject(prevStatus, data)
+    ) {
+      rejectAlertShownRef.current = true;
+      showMerchantRejectAlert(getMerchantRejectReason(data));
+    }
+    lastStatusRef.current = data.status;
+    setOrder(data);
+  }, []);
+
   useEffect(() => {
     (async () => {
       if (!id) return;
       try {
         const data = await getOrderById(String(id));
-        setOrder(data);
+        lastStatusRef.current = undefined;
+        rejectAlertShownRef.current = false;
+        applyOrderUpdate(data, true);
       } finally {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, applyOrderUpdate]);
+
+  useEffect(() => {
+    if (!id || !order || order.status !== 2) return;
+    const timer = setInterval(async () => {
+      try {
+        const latest = await getOrderById(String(id));
+        applyOrderUpdate(latest, true);
+      } catch {
+        // ignore polling errors
+      }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [id, order?.status, applyOrderUpdate]);
 
   useEffect(() => {
     if (!order || order.status !== 1 || order.payStatus === 1) {
@@ -103,6 +139,8 @@ export default function OrderDetailScreen() {
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" /></View>;
   if (!order) return <View style={styles.center}><Text>注文情報がありません</Text></View>;
+
+  const rejectReason = getMerchantRejectReason(order);
 
   const onRepay = async () => {
     try {
@@ -145,7 +183,7 @@ export default function OrderDetailScreen() {
       setSubmitting(true);
       await cancelOrder(String(order.id));
       const latest = await getOrderById(String(order.id));
-      setOrder(latest);
+      applyOrderUpdate(latest, false);
       Alert.alert("完了", "注文をキャンセルしました");
     } catch (e: any) {
       Alert.alert("エラー", e?.message || "キャンセルに失敗しました");
@@ -163,6 +201,12 @@ export default function OrderDetailScreen() {
       <Text style={styles.meta}>配達料: {formatJPY(deliveryFee)}</Text>
       <Text style={styles.meta}>梱包料: {formatJPY(order.packAmount)}</Text>
       <Text style={styles.meta}>お届け予定: {order.estimatedDeliveryTime || order.deliveryTime || "-"}</Text>
+      {order.status === 6 && rejectReason ? (
+        <View style={styles.rejectCard}>
+          <Text style={styles.rejectTitle}>店舗により拒否されました</Text>
+          <Text style={styles.rejectReason}>{rejectReason}</Text>
+        </View>
+      ) : null}
       {order.status === 1 && order.payStatus !== 1 && (
         <View style={styles.countdownCard}>
           <Text style={styles.countdownTitle}>支払い待ち</Text>
@@ -223,6 +267,17 @@ const styles = StyleSheet.create({
   countdownTitle: { color: "#9a3412", fontWeight: "700" },
   countdownTime: { color: "#dc2626", fontSize: 22, fontWeight: "800" },
   countdownTip: { color: "#7c2d12", fontSize: 12 },
+  rejectCard: {
+    marginTop: 10,
+    backgroundColor: "#fef2f2",
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    borderRadius: 10,
+    padding: 10,
+    gap: 4,
+  },
+  rejectTitle: { color: "#991b1b", fontWeight: "700" },
+  rejectReason: { color: "#7f1d1d", fontSize: 13 },
   actions: { flexDirection: "row", gap: 8, marginTop: 10 },
   btn: { borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14 },
   payBtn: { backgroundColor: "#2563eb" },

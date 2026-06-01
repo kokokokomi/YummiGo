@@ -17,9 +17,9 @@ const API_BASE_URL_BY_ENV: Record<string, string> = {
 };
 
 export const API_BASE_URL =
-  API_BASE_URL_BY_ENV[APP_ENV] ||
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   extra.EXPO_PUBLIC_API_BASE_URL ||
+  API_BASE_URL_BY_ENV[APP_ENV] ||
   "http://13.113.53.71";
 
 if (__DEV__) {

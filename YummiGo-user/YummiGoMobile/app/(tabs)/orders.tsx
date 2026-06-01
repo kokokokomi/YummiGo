@@ -8,6 +8,11 @@ import {
   Text,
   View,
 } from "react-native";
+import {
+  getMerchantRejectReason,
+  shouldNotifyMerchantReject,
+  showMerchantRejectAlert,
+} from "@/src/lib/orderRejection";
 import { router } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { getOrderPage } from "@/src/api/order";
@@ -50,6 +55,7 @@ export default function OrdersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [nowMs, setNowMs] = useState(Date.now());
   const allListRef = useRef<OrderVO[]>([]);
+  const statusByIdRef = useRef<Map<string, number>>(new Map());
 
   const parseOrderTimeMs = (raw?: string) => {
     if (!raw) return NaN;
@@ -92,6 +98,17 @@ export default function OrdersScreen() {
     return `残り時間: ${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
+  const notifyRejectedOrders = useCallback((records: OrderVO[]) => {
+    for (const item of records) {
+      const key = String(item.id);
+      const prevStatus = statusByIdRef.current.get(key);
+      if (shouldNotifyMerchantReject(prevStatus, item)) {
+        showMerchantRejectAlert(getMerchantRejectReason(item));
+      }
+      statusByIdRef.current.set(key, item.status);
+    }
+  }, []);
+
   const fetchList = useCallback(async (nextStatus = 0, silent = false) => {
     if (!silent) setLoading(true);
     setError(null);
@@ -99,17 +116,22 @@ export default function OrdersScreen() {
       if (nextStatus === 0) {
         const page = await getOrderPage(1, 100);
         const records = page.records || [];
+        notifyRejectedOrders(records);
         allListRef.current = records;
         setList(records);
       } else {
         // 优先后端筛选，若失败则回退到本地筛选，确保菜单点击一定有效
         try {
           const page = await getOrderPage(1, 100, nextStatus);
-          setList(page.records || []);
+          const records = page.records || [];
+          notifyRejectedOrders(records);
+          setList(records);
         } catch {
           const source = allListRef.current.length > 0 ? allListRef.current : (await getOrderPage(1, 100)).records || [];
           if (allListRef.current.length === 0) allListRef.current = source;
-          setList(source.filter((x) => x.status === nextStatus));
+          const filtered = source.filter((x) => x.status === nextStatus);
+          notifyRejectedOrders(filtered);
+          setList(filtered);
         }
       }
     } catch (e: any) {
@@ -118,7 +140,7 @@ export default function OrdersScreen() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [notifyRejectedOrders]);
 
   useEffect(() => {
     // 中文注释：仅在页面首次进入时请求一次，避免依赖变化导致重复请求

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import * as AuthSession from "expo-auth-session";
+import Constants from "expo-constants";
 import { router } from "expo-router";
 import { Alert, Platform } from "react-native";
 
@@ -33,14 +34,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const useProxy = Platform.OS !== "web";
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: "yummigo",
-    useProxy,
-  });
+  const isExpoGo = Constants.appOwnership === "expo";
+  const useProxy = Platform.OS !== "web" && isExpoGo;
+  const expoProxyProject = "@kokokokomi/YummiGoMobile";
+  const expoProxyRedirectUri = `https://auth.expo.io/${expoProxyProject}`;
+  const expoClientId = GOOGLE_EXPO_CLIENT_ID || GOOGLE_WEB_CLIENT_ID || undefined;
+  const platformClientId =
+    Platform.OS === "ios"
+      ? GOOGLE_IOS_CLIENT_ID || GOOGLE_WEB_CLIENT_ID || GOOGLE_EXPO_CLIENT_ID || ""
+      : Platform.OS === "android"
+      ? GOOGLE_ANDROID_CLIENT_ID || GOOGLE_WEB_CLIENT_ID || GOOGLE_EXPO_CLIENT_ID || ""
+      : GOOGLE_WEB_CLIENT_ID || GOOGLE_EXPO_CLIENT_ID || "";
+  const redirectUri = useProxy
+    ? expoProxyRedirectUri
+    : AuthSession.makeRedirectUri({
+        scheme: "yummigo",
+      });
 
   const [request, response, promptAsync] = Google.useAuthRequest({
-    expoClientId: GOOGLE_EXPO_CLIENT_ID || GOOGLE_WEB_CLIENT_ID || undefined,
+    expoClientId,
     webClientId: GOOGLE_WEB_CLIENT_ID || undefined,
     iosClientId: GOOGLE_IOS_CLIENT_ID || GOOGLE_WEB_CLIENT_ID || undefined,
     androidClientId: GOOGLE_ANDROID_CLIENT_ID || GOOGLE_WEB_CLIENT_ID || undefined,
@@ -78,6 +90,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })().catch(console.error);
   }, [response]);
 
+  useEffect(() => {
+    if (!response || response.type === "success") return;
+    Alert.alert("Google認証失敗", "Googleログインに失敗しました。しばらくして再度お試しください。");
+  }, [response, redirectUri, platformClientId]);
+
   const value = useMemo<AuthContextType>(
     () => ({
       token,
@@ -95,22 +112,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           Alert.alert("Googleログイン準備中", "認証リクエストの初期化中です。1秒後にもう一度お試しください。");
           return;
         }
-        if (!GOOGLE_WEB_CLIENT_ID && !GOOGLE_EXPO_CLIENT_ID && !GOOGLE_IOS_CLIENT_ID && !GOOGLE_ANDROID_CLIENT_ID) {
+        if (!platformClientId) {
           Alert.alert("Google設定不足", "Google Client ID を設定してください。");
           return;
         }
         try {
-          await promptAsync({ useProxy } as any);
+          await promptAsync({
+            useProxy,
+            projectNameForProxy: expoProxyProject,
+          } as any);
         } catch (e: any) {
-          Alert.alert(
-            "Googleログインエラー",
-            [
-              e?.message || "Google OAuth の開始に失敗しました。",
-              `platform: ${Platform.OS}`,
-              `redirect_uri: ${redirectUri}`,
-              "Google Cloud Console の OAuth 設定で、Client ID と redirect URI が一致しているか確認してください。",
-            ].join("\n")
-          );
+          Alert.alert("Googleログインエラー", e?.message || "Google OAuth の開始に失敗しました。");
         }
       },
       async logout() {
@@ -124,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(me);
       },
     }),
-    [token, profile, loading, request, promptAsync, redirectUri, useProxy]
+    [token, profile, loading, request, promptAsync, redirectUri, useProxy, platformClientId]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -600,9 +600,14 @@ export default function OrderConfirmScreen() {
                 );
               })}
             </ScrollView>
-            <Pressable style={styles.payBtn} onPress={() => setDeliveryTimePickerVisible(false)}>
-              <Text style={styles.payText}>決定</Text>
-            </Pressable>
+            <View style={styles.row}>
+              <Pressable style={styles.secondaryBtn} onPress={() => setDeliveryTimePickerVisible(false)}>
+                <Text style={styles.secondaryText}>キャンセル</Text>
+              </Pressable>
+              <Pressable style={styles.payBtn} onPress={() => setDeliveryTimePickerVisible(false)}>
+                <Text style={styles.payText}>確定</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>

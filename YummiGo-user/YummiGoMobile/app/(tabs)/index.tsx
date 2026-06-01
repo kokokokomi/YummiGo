@@ -40,6 +40,13 @@ type SetmealDishDisplay = {
   description?: string;
 };
 
+const SIDEBAR_WIDTH = 88;
+const MENU_IMAGE_SIZE = 96;
+const MAIN_KINDS: { key: MenuKind; label: string }[] = [
+  { key: "dish", label: "料理" },
+  { key: "setmeal", label: "セット" },
+];
+
 export default function MenuScreen() {
   const { height: screenHeight } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
@@ -57,7 +64,6 @@ export default function MenuScreen() {
   const [cartVisible, setCartVisible] = useState(false);
   const { items, totalAmount, totalCount, addItem, subItem, clearAll } = useCart();
   const cartModalHeight = useMemo(() => {
-    // 中文注释：购物车详情最多占屏幕 30%，商品少时按内容自适应
     const maxHeight = Math.floor(screenHeight * 0.3);
     const headerAndBottom = 92;
     const rowHeight = 58;
@@ -70,15 +76,18 @@ export default function MenuScreen() {
     () => categories.find((c) => String(c.id) === selectedCategoryId)?.name ?? "",
     [categories, selectedCategoryId]
   );
+
   const getUnitPrice = (amount: number, count: number) => {
     const n = Number(count) || 1;
     return Number(amount) / n;
   };
+
   const resolveImage = (path?: string) => {
     if (!path) return "";
     if (/^(https?:)?\/\//.test(path) || path.startsWith("data:")) return path;
     return `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
   };
+
   const getSetmealOriginalPrice = (setmeal: Setmeal | null) => {
     if (setmealDishList.length > 0) {
       return setmealDishList.reduce((sum, dish) => sum + Number(dish.unitPrice || 0) * Number(dish.copies || 0), 0);
@@ -96,11 +105,15 @@ export default function MenuScreen() {
       setSelectedCategoryId(String(list[0].id));
       return String(list[0].id);
     }
+    setSelectedCategoryId("");
     return "";
   };
 
   const loadMenus = async (kind: MenuKind, categoryId: string) => {
-    if (!categoryId) return;
+    if (!categoryId) {
+      setMenuList([]);
+      return;
+    }
     if (kind === "dish") {
       const list = await getDishList(categoryId);
       setMenuList((list || []).map((item) => ({ ...item, _kind: "dish" })));
@@ -129,13 +142,29 @@ export default function MenuScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await bootstrap();
+      const categoryId = selectedCategoryId || (await loadCategories(menuKind));
+      await loadMenus(menuKind, categoryId);
     } finally {
       setRefreshing(false);
     }
   };
 
+  const onSwitchMenuKind = async (kind: MenuKind) => {
+    if (menuKind === kind) return;
+    setMenuKind(kind);
+    setLoading(true);
+    try {
+      const categoryId = await loadCategories(kind);
+      await loadMenus(kind, categoryId);
+    } catch (e: any) {
+      Alert.alert("エラー", e?.message || "データ取得に失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onSelectCategory = async (categoryId: string) => {
+    if (categoryId === selectedCategoryId) return;
     setSelectedCategoryId(categoryId);
     try {
       await loadMenus(menuKind, categoryId);
@@ -169,7 +198,6 @@ export default function MenuScreen() {
     }
   };
 
-  // 中文注释：后端 flavor.value 常见是 JSON 数组或逗号分隔字符串，这里统一做兼容解析
   const parseFlavorOptions = (flavor: DishFlavor) => {
     const raw = flavor?.value ?? "";
     if (!raw) return [];
@@ -177,7 +205,7 @@ export default function MenuScreen() {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed.map((x) => String(x));
     } catch {
-      // ignore parse error
+      // ignore
     }
     return raw
       .split(",")
@@ -193,9 +221,7 @@ export default function MenuScreen() {
       Alert.alert("選択してください", `${missing.name} を選択してください`);
       return;
     }
-    const dishFlavor = flavors
-      .map((f) => `${f.name}:${selectedFlavor[f.name]}`)
-      .join(",");
+    const dishFlavor = flavors.map((f) => `${f.name}:${selectedFlavor[f.name]}`).join(",");
     try {
       await addItem({ dishId: String(flavorDish.id), dishFlavor });
       setFlavorVisible(false);
@@ -221,7 +247,6 @@ export default function MenuScreen() {
       const detailByDishId = new Map((dishItems || []).map((dish) => [String(dish.dishId || ""), dish]));
       const detailByName = new Map((dishItems || []).map((dish) => [normalizeName(dish.name), dish]));
       const seenKeys = new Set<string>();
-      // 以商家保存的套餐配置为唯一真源，避免 /setmeal/dish 返回重复时出现 a+a+b
       const detailedFromConfig = setmealConfigDishes
         .map((configDish, idx) => {
           const dishIdKey = String(configDish.dishId || "").trim();
@@ -229,8 +254,7 @@ export default function MenuScreen() {
           const key = nameKey || dishIdKey || String(idx);
           if (seenKeys.has(key)) return null;
           seenKeys.add(key);
-          const matchedDetail =
-            detailByDishId.get(dishIdKey) || detailByName.get(nameKey);
+          const matchedDetail = detailByDishId.get(dishIdKey) || detailByName.get(nameKey);
           return {
             id: String(configDish.dishId || idx),
             name: configDish.name,
@@ -250,121 +274,149 @@ export default function MenuScreen() {
         description: dish.description,
       })) as SetmealDishDisplay[];
       setSetmealDishList(detailedFromConfig.length > 0 ? detailedFromConfig : detailedFallback);
-      if (setmealFull) {
-        setSetmealDetail(setmealFull);
-      }
+      if (setmealFull) setSetmealDetail(setmealFull);
     } catch (e: any) {
       setSetmealDishList([]);
       Alert.alert("お知らせ", e?.message || "セット内訳の取得に失敗しました。基本情報のみ表示しています。");
     }
   };
 
+  const renderMenuItem = ({ item }: { item: MenuItem }) => (
+    <View style={styles.menuRow}>
+      {item.image ? (
+        <Image source={{ uri: resolveImage(item.image) }} style={styles.menuImage} />
+      ) : (
+        <View style={styles.menuImagePlaceholder}>
+          <MaterialIcons name="restaurant" size={28} color="#cbd5e1" />
+        </View>
+      )}
+      <View style={styles.menuInfo}>
+        <View style={styles.menuTitleRow}>
+          <Text style={styles.menuName} numberOfLines={2}>
+            {item.name}
+          </Text>
+          {item._kind === "setmeal" && <Text style={styles.setmealBadge}>セット</Text>}
+        </View>
+        <Text style={styles.menuDesc} numberOfLines={2}>
+          {item.description || "—"}
+        </Text>
+        <View style={styles.menuFooter}>
+          <Text style={styles.menuPrice}>¥{Number(item.price).toFixed(0)}</Text>
+          <View style={styles.menuActions}>
+            {item._kind === "setmeal" && (
+              <Pressable style={styles.detailLink} onPress={() => onOpenSetmealDetail(item as Setmeal)}>
+                <Text style={styles.detailLinkText}>詳細</Text>
+              </Pressable>
+            )}
+            <Pressable style={styles.addCircle} onPress={() => onAddMenu(item)}>
+              <MaterialIcons name="add" size={22} color="#fff" />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
+  const listHeader = (
+    <View style={styles.contentHeader}>
+      <Text style={styles.contentTitle}>{selectedCategoryName || (menuKind === "dish" ? "料理" : "セット")}</Text>
+      <Text style={styles.contentSub}>{menuList.length} 品</Text>
+    </View>
+  );
+
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#f59e0b" />
       </View>
     );
   }
 
   return (
     <View style={styles.page}>
-      <View style={styles.modeTabs}>
-        <Pressable
-          style={[styles.modeTab, menuKind === "dish" && styles.modeTabActive]}
-          onPress={async () => {
-            if (menuKind === "dish") return;
-            setMenuKind("dish");
-            await bootstrap("dish");
-          }}
-        >
-          <Text style={[styles.modeTabText, menuKind === "dish" && styles.modeTabTextActive]}>料理</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.modeTab, menuKind === "setmeal" && styles.modeTabActive]}
-          onPress={async () => {
-            if (menuKind === "setmeal") return;
-            setMenuKind("setmeal");
-            await bootstrap("setmeal");
-          }}
-        >
-          <Text style={[styles.modeTabText, menuKind === "setmeal" && styles.modeTabTextActive]}>セット</Text>
-        </Pressable>
-      </View>
-      <View style={styles.categoryWrap}>
-        <FlatList
-          horizontal
-          data={categories}
-          keyExtractor={(item) => String(item.id)}
-          showsHorizontalScrollIndicator={false}
-          renderItem={({ item }) => {
-            const active = String(item.id) === selectedCategoryId;
+      <View style={styles.mainRow}>
+        {/* 左侧：料理 / セット + 分类 */}
+        <View style={styles.sidebar}>
+          {MAIN_KINDS.map((kind) => {
+            const active = menuKind === kind.key;
             return (
               <Pressable
-                onPress={() => onSelectCategory(String(item.id))}
-                style={[styles.categoryChip, active && styles.categoryChipActive]}
+                key={kind.key}
+                style={[styles.kindItem, active && styles.kindItemActive]}
+                onPress={() => onSwitchMenuKind(kind.key)}
               >
-                <Text style={[styles.categoryText, active && styles.categoryTextActive]}>{item.name}</Text>
+                {active && <View style={styles.kindActiveBar} />}
+                <Text style={[styles.kindText, active && styles.kindTextActive]} numberOfLines={2}>
+                  {kind.label}
+                </Text>
               </Pressable>
             );
-          }}
-        />
+          })}
+          <View style={styles.sidebarDivider} />
+          <ScrollView
+            style={styles.categoryScroll}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.categoryScrollContent}
+          >
+            {categories.map((cat) => {
+              const active = String(cat.id) === selectedCategoryId;
+              return (
+                <Pressable
+                  key={String(cat.id)}
+                  style={[styles.categoryItem, active && styles.categoryItemActive]}
+                  onPress={() => onSelectCategory(String(cat.id))}
+                >
+                  {active && <View style={styles.categoryActiveBar} />}
+                  <Text style={[styles.categoryText, active && styles.categoryTextActive]} numberOfLines={3}>
+                    {cat.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+            {categories.length === 0 && (
+              <Text style={styles.sidebarEmpty}>分類なし</Text>
+            )}
+          </ScrollView>
+        </View>
+
+        {/* 右侧：菜品列表 */}
+        <View style={styles.content}>
+          <FlatList
+            data={menuList}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={renderMenuItem}
+            ListHeaderComponent={listHeader}
+            stickyHeaderIndices={[0]}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#f59e0b" />}
+            contentContainerStyle={styles.menuListContent}
+            ItemSeparatorComponent={() => <View style={styles.menuSeparator} />}
+            ListEmptyComponent={
+              <View style={styles.emptyBox}>
+                <MaterialIcons name="inbox" size={40} color="#cbd5e1" />
+                <Text style={styles.emptyText}>この分類には商品がありません</Text>
+              </View>
+            }
+          />
+        </View>
       </View>
-
-      <Text style={styles.sectionTitle}>{selectedCategoryName || (menuKind === "dish" ? "料理メニュー" : "セットメニュー")}</Text>
-
-      <FlatList
-        data={menuList}
-        keyExtractor={(item) => String(item.id)}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 84 }]}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            {item.image ? <Image source={{ uri: resolveImage(item.image) }} style={styles.image} /> : <View style={styles.imagePlaceholder} />}
-            <View style={styles.cardBody}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text style={styles.name}>{item.name}</Text>
-                {item._kind === "setmeal" && <Text style={styles.setmealTag}>セット</Text>}
-              </View>
-              <Text style={styles.desc} numberOfLines={2}>
-                {item.description || "説明なし"}
-              </Text>
-              <View style={styles.footer}>
-                <Text style={styles.price}>¥{Number(item.price).toFixed(0)}</Text>
-                {item._kind === "setmeal" ? (
-                  <View style={styles.setmealActions}>
-                    <Pressable style={styles.detailBtn} onPress={() => onOpenSetmealDetail(item as Setmeal)}>
-                      <Text style={styles.detailBtnText}>詳細</Text>
-                    </Pressable>
-                    <Pressable style={styles.addBtn} onPress={() => onAddMenu(item)}>
-                      <Text style={styles.addBtnText}>追加</Text>
-                    </Pressable>
-                  </View>
-                ) : (
-                  <Pressable style={styles.addBtn} onPress={() => onAddMenu(item)}>
-                    <Text style={styles.addBtnText}>追加</Text>
-                  </Pressable>
-                )}
-              </View>
-            </View>
-          </View>
-        )}
-      />
 
       <View style={styles.cartBar}>
         <Pressable style={styles.cartLeft} onPress={() => setCartVisible(true)}>
           <View style={styles.cartIconWrap}>
             <MaterialIcons name="shopping-cart" size={24} color="#fff" />
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{totalCount}</Text>
-            </View>
+            {totalCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{totalCount > 99 ? "99+" : totalCount}</Text>
+              </View>
+            )}
           </View>
           <View>
+            <Text style={styles.cartLabel}>カート</Text>
             <Text style={styles.cartAmount}>¥{totalAmount.toFixed(0)}</Text>
           </View>
         </Pressable>
         <Pressable
-          style={[styles.checkoutBtn, totalCount === 0 && { opacity: 0.6 }]}
+          style={[styles.checkoutBtn, totalCount === 0 && styles.checkoutBtnDisabled]}
           disabled={totalCount === 0}
           onPress={() => router.push("/order/confirm")}
         >
@@ -387,7 +439,11 @@ export default function MenuScreen() {
               contentContainerStyle={{ paddingBottom: 60 }}
               renderItem={({ item }) => (
                 <View style={styles.cartItem}>
-                  {item.image ? <Image source={{ uri: resolveImage(item.image) }} style={styles.cartItemImage} /> : <View style={styles.cartItemImage} />}
+                  {item.image ? (
+                    <Image source={{ uri: resolveImage(item.image) }} style={styles.cartItemImage} />
+                  ) : (
+                    <View style={styles.cartItemImage} />
+                  )}
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cartItemName}>{item.name}</Text>
                     <Text style={styles.cartItemSub}>{item.dishFlavor || "-"}</Text>
@@ -462,13 +518,9 @@ export default function MenuScreen() {
                           <Pressable
                             key={opt}
                             style={[styles.flavorChip, active && styles.flavorChipActive]}
-                            onPress={() =>
-                              setSelectedFlavor((prev) => ({ ...prev, [flavor.name]: opt }))
-                            }
+                            onPress={() => setSelectedFlavor((prev) => ({ ...prev, [flavor.name]: opt }))}
                           >
-                            <Text style={[styles.flavorChipText, active && styles.flavorChipTextActive]}>
-                              {opt}
-                            </Text>
+                            <Text style={[styles.flavorChipText, active && styles.flavorChipTextActive]}>{opt}</Text>
                           </Pressable>
                         );
                       })}
@@ -488,6 +540,7 @@ export default function MenuScreen() {
           </View>
         </View>
       </Modal>
+
       <Modal visible={setmealVisible} transparent animationType="slide" onRequestClose={() => setSetmealVisible(false)}>
         <View style={styles.modalMask}>
           <View style={styles.modalCard}>
@@ -524,7 +577,7 @@ export default function MenuScreen() {
                   </View>
                 </View>
               ))}
-              {(setmealDishList.length === 0) && (
+              {setmealDishList.length === 0 && (
                 <Text style={styles.emptyText}>このセットの内訳はまだ設定されていません</Text>
               )}
             </ScrollView>
@@ -551,113 +604,266 @@ export default function MenuScreen() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#f8fafc" },
-  modeTabs: {
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 4,
-    backgroundColor: "#fff",
+  page: { flex: 1, backgroundColor: "#fff" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
+  mainRow: { flex: 1, flexDirection: "row" },
+  sidebar: {
+    width: SIDEBAR_WIDTH,
+    backgroundColor: "#f3f4f6",
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: "#e5e7eb",
   },
-  modeTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 16,
-    backgroundColor: "#eef2ff",
-  },
-  modeTabActive: { backgroundColor: "#2563eb" },
-  modeTabText: { color: "#1f2937", fontWeight: "600" },
-  modeTabTextActive: { color: "#fff" },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  categoryWrap: {
-    backgroundColor: "#fff",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-  },
-  categoryChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
-    backgroundColor: "#eef2ff",
-    marginRight: 8,
-  },
-  categoryChipActive: { backgroundColor: "#2563eb" },
-  categoryText: { color: "#1f2937", fontSize: 13, fontWeight: "600" },
-  categoryTextActive: { color: "#fff" },
-  sectionTitle: { fontSize: 18, fontWeight: "700", color: "#111827", margin: 14 },
-  listContent: { paddingHorizontal: 12, paddingBottom: 24, gap: 12 },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    shadowColor: "#111827",
-    shadowOpacity: 0.12,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  image: { width: "100%", height: 160, resizeMode: "cover" },
-  imagePlaceholder: { width: "100%", height: 160, backgroundColor: "#e5e7eb" },
-  cardBody: { padding: 12, gap: 8 },
-  name: { fontSize: 16, fontWeight: "700", color: "#111827" },
-  setmealTag: {
-    fontSize: 11,
-    color: "#2563eb",
-    backgroundColor: "#dbeafe",
-    borderRadius: 6,
+  kindItem: {
+    minHeight: 52,
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingVertical: 10,
+    position: "relative",
+  },
+  kindItemActive: {
+    backgroundColor: "#fff",
+  },
+  kindActiveBar: {
+    position: "absolute",
+    left: 0,
+    top: 10,
+    bottom: 10,
+    width: 3,
+    borderRadius: 2,
+    backgroundColor: "#f59e0b",
+  },
+  kindText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#6b7280",
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  kindTextActive: {
+    color: "#111827",
+    fontWeight: "800",
+  },
+  sidebarDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#e5e7eb",
+    marginHorizontal: 8,
+  },
+  categoryScroll: { flex: 1 },
+  categoryScrollContent: { paddingBottom: 88 },
+  categoryItem: {
+    minHeight: 48,
+    justifyContent: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    position: "relative",
+  },
+  categoryItemActive: {
+    backgroundColor: "#fff",
+  },
+  categoryActiveBar: {
+    position: "absolute",
+    left: 0,
+    top: 8,
+    bottom: 8,
+    width: 3,
+    borderRadius: 2,
+    backgroundColor: "#f59e0b",
+  },
+  categoryText: {
+    fontSize: 12,
+    color: "#6b7280",
+    textAlign: "center",
+    lineHeight: 16,
+  },
+  categoryTextActive: {
+    color: "#111827",
     fontWeight: "700",
   },
-  desc: { fontSize: 13, color: "#6b7280" },
-  footer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 },
-  price: { fontSize: 16, fontWeight: "700", color: "#dc2626" },
-  setmealActions: { flexDirection: "row", gap: 8 },
-  detailBtn: { backgroundColor: "#e5e7eb", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  detailBtnText: { color: "#1f2937", fontWeight: "700" },
-  addBtn: { backgroundColor: "#2563eb", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
-  addBtnText: { color: "#fff", fontWeight: "700" },
+  sidebarEmpty: {
+    fontSize: 11,
+    color: "#9ca3af",
+    textAlign: "center",
+    padding: 12,
+  },
+  content: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  contentHeader: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#f1f5f9",
+  },
+  contentTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#111827",
+  },
+  contentSub: {
+    marginTop: 2,
+    fontSize: 12,
+    color: "#9ca3af",
+  },
+  menuListContent: {
+    paddingBottom: 96,
+    flexGrow: 1,
+  },
+  menuRow: {
+    flexDirection: "row",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 10,
+    alignItems: "flex-start",
+  },
+  menuImage: {
+    width: MENU_IMAGE_SIZE,
+    height: MENU_IMAGE_SIZE,
+    borderRadius: 8,
+    backgroundColor: "#f1f5f9",
+  },
+  menuImagePlaceholder: {
+    width: MENU_IMAGE_SIZE,
+    height: MENU_IMAGE_SIZE,
+    borderRadius: 8,
+    backgroundColor: "#f1f5f9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuInfo: {
+    flex: 1,
+    minHeight: MENU_IMAGE_SIZE,
+    justifyContent: "space-between",
+  },
+  menuTitleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    flexWrap: "wrap",
+  },
+  menuName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#111827",
+    lineHeight: 20,
+  },
+  setmealBadge: {
+    fontSize: 10,
+    color: "#b45309",
+    backgroundColor: "#fef3c7",
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    fontWeight: "700",
+    overflow: "hidden",
+  },
+  menuDesc: {
+    marginTop: 4,
+    fontSize: 12,
+    color: "#9ca3af",
+    lineHeight: 17,
+  },
+  menuFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  menuPrice: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#dc2626",
+  },
+  menuActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  detailLink: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  detailLinkText: {
+    fontSize: 12,
+    color: "#6b7280",
+    fontWeight: "600",
+  },
+  addCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#f59e0b",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#f59e0b",
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  menuSeparator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#f1f5f9",
+    marginLeft: 12 + MENU_IMAGE_SIZE + 10,
+  },
+  emptyBox: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 48,
+    gap: 8,
+  },
+  emptyText: { textAlign: "center", color: "#9ca3af", fontSize: 13 },
   cartBar: {
     position: "absolute",
     left: 10,
     right: 10,
     bottom: 8,
-    backgroundColor: "#111827",
-    borderRadius: 14,
-    paddingHorizontal: 12,
+    backgroundColor: "#1f2937",
+    borderRadius: 28,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    elevation: 8,
   },
-  cartLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
-  cartIconWrap: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
+  cartLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  cartIconWrap: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   badge: {
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: "#ef4444",
     alignItems: "center",
     justifyContent: "center",
     position: "absolute",
-    top: -4,
-    right: -6,
-    paddingHorizontal: 3,
+    top: -2,
+    right: -8,
+    paddingHorizontal: 4,
   },
-  badgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
-  cartAmount: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  checkoutBtn: { backgroundColor: "#2563eb", borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
-  checkoutBtnText: { color: "#fff", fontWeight: "700" },
+  badgeText: { color: "#fff", fontSize: 10, fontWeight: "800" },
+  cartLabel: { color: "#9ca3af", fontSize: 11 },
+  cartAmount: { color: "#fff", fontSize: 17, fontWeight: "800" },
+  checkoutBtn: {
+    backgroundColor: "#f59e0b",
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  checkoutBtnDisabled: { opacity: 0.45 },
+  checkoutBtnText: { color: "#fff", fontWeight: "800", fontSize: 14 },
   cartModalCard: {
     backgroundColor: "#fff",
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    height: "30%",
     paddingTop: 8,
     paddingHorizontal: 12,
   },
@@ -686,7 +892,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#e5e7eb",
   },
   qtyText: { minWidth: 14, textAlign: "center" },
-  emptyText: { textAlign: "center", color: "#9ca3af", marginTop: 12 },
   cartModalBottom: {
     position: "absolute",
     left: 0,
@@ -702,7 +907,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   modalTotal: { color: "#111827", fontWeight: "700" },
-  modalPayBtn: { backgroundColor: "#2563eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  modalPayBtn: { backgroundColor: "#f59e0b", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   modalPayText: { color: "#fff", fontWeight: "700" },
   modalMask: {
     flex: 1,
@@ -726,21 +931,22 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
   modalDishName: { marginTop: 4, color: "#6b7280" },
+  desc: { fontSize: 13, color: "#6b7280", marginTop: 4 },
   flavorLabel: { fontWeight: "700", color: "#374151", marginBottom: 8 },
   flavorOptions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   flavorChip: {
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 16,
-    backgroundColor: "#eef2ff",
+    backgroundColor: "#fef3c7",
   },
-  flavorChipActive: { backgroundColor: "#2563eb" },
+  flavorChipActive: { backgroundColor: "#f59e0b" },
   flavorChipText: { color: "#1f2937" },
   flavorChipTextActive: { color: "#fff" },
   modalActions: { flexDirection: "row", gap: 10, marginTop: 16 },
   modalBtn: { flex: 1, alignItems: "center", paddingVertical: 11, borderRadius: 10 },
   modalCancel: { backgroundColor: "#f3f4f6" },
-  modalConfirm: { backgroundColor: "#2563eb" },
+  modalConfirm: { backgroundColor: "#f59e0b" },
   modalCancelText: { color: "#374151", fontWeight: "700" },
   modalConfirmText: { color: "#fff", fontWeight: "700" },
   discountBox: {
@@ -768,6 +974,6 @@ const styles = StyleSheet.create({
   setmealDishName: { color: "#111827", fontWeight: "700" },
   setmealDishDesc: { color: "#6b7280", fontSize: 12, marginTop: 2 },
   setmealDishBottom: { flexDirection: "row", justifyContent: "space-between", marginTop: 6 },
-  setmealDishCopies: { color: "#2563eb", fontWeight: "700" },
+  setmealDishCopies: { color: "#b45309", fontWeight: "700" },
   setmealDishPrice: { color: "#dc2626", fontWeight: "700" },
 });
