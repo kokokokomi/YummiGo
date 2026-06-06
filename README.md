@@ -17,7 +17,8 @@ sy
 - モバイルアプリ: Expo Go でプロジェクトを起動し、表示された QR コードを読み取って確認できます。
 - https://youtu.be/VBryEkeK5jM 主要機能デモ動画
 - https://youtube.com/shorts/pFVWgGnJmyI?feature=share  Google認可ログイン機能の実装デモ
- <img width="305" height="274" alt="image" src="https://github.com/user-attachments/assets/230b4015-bb7c-4160-93b9-1b31ef4c54f5" />
+<img width="252" height="248" alt="image" src="https://github.com/user-attachments/assets/937b2950-ced9-467f-990f-06b3226c7658" />
+
 
 - また、stripeはテスト環境のため、カードの番号が4242-4242-4242-4242のクレジットカードでお支払いできます。
 
