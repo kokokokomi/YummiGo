@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "rea
 import { useLocalSearchParams, router } from "expo-router";
 
 import { confirmPayment, getOrderById } from "@/src/api/order";
+import { navigateToOrderDetail } from "@/src/lib/orderNavigation";
 import { useCart } from "@/src/state/cart";
 import type { OrderVO } from "@/src/types/api";
 
@@ -44,8 +45,7 @@ export default function PaymentSuccessScreen() {
     const id = String(params.orderId);
     const t = setTimeout(() => {
       navigated.current = true;
-      // 单次 replace，避免 native-stack 与 JS 状态不同步
-      router.replace(`/order/detail?id=${id}`);
+      navigateToOrderDetail(id);
     }, 1200);
     return () => clearTimeout(t);
   }, [loading, params.orderId]);
@@ -77,7 +77,7 @@ export default function PaymentSuccessScreen() {
         onPress={() => {
           navigated.current = true;
           if (params.orderId) {
-            router.replace(`/order/detail?id=${String(params.orderId)}`);
+            navigateToOrderDetail(String(params.orderId));
           } else {
             router.replace("/(tabs)/orders");
           }

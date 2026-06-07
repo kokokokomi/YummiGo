@@ -86,7 +86,6 @@ export default function LoginScreen() {
         </Text>
       </Pressable>
 
-      <Text style={styles.tip}>注: 画面文言は日本語、コード注释は中文で統一しています。</Text>
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );

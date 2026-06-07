@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   ActivityIndicator,
   Alert,
@@ -28,6 +29,7 @@ import {
 import type { Category, DishFlavor, DishVO, Setmeal } from "@/src/types/api";
 import { useCart } from "@/src/state/cart";
 import { API_BASE_URL } from "@/src/config/env";
+import { getShopStatus } from "@/src/api/shop";
 
 type MenuKind = "dish" | "setmeal";
 type MenuItem = (DishVO | Setmeal) & { _kind: MenuKind };
@@ -62,7 +64,17 @@ export default function MenuScreen() {
   const [setmealDetail, setSetmealDetail] = useState<Setmeal | null>(null);
   const [setmealDishList, setSetmealDishList] = useState<SetmealDishDisplay[]>([]);
   const [cartVisible, setCartVisible] = useState(false);
+  const [shopOpen, setShopOpen] = useState(true);
   const { items, totalAmount, totalCount, addItem, subItem, clearAll } = useCart();
+
+  const fetchShopOpen = useCallback(async () => {
+    try {
+      const status = await getShopStatus();
+      setShopOpen(Number(status) === 1);
+    } catch {
+      setShopOpen(true);
+    }
+  }, []);
   const cartModalHeight = useMemo(() => {
     const maxHeight = Math.floor(screenHeight * 0.3);
     const headerAndBottom = 92;
@@ -137,7 +149,14 @@ export default function MenuScreen() {
 
   useEffect(() => {
     bootstrap();
-  }, [bootstrap]);
+    fetchShopOpen();
+  }, [bootstrap, fetchShopOpen]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchShopOpen();
+    }, [fetchShopOpen])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -174,6 +193,10 @@ export default function MenuScreen() {
   };
 
   const onAddMenu = async (item: MenuItem) => {
+    if (!shopOpen) {
+      Alert.alert("閉店中", "現在お店は閉店中のため、注文を受け付けておりません。");
+      return;
+    }
     if (item._kind === "setmeal") {
       try {
         await addItem({ setmealId: String(item.id) });
@@ -334,7 +357,13 @@ export default function MenuScreen() {
 
   return (
     <View style={styles.page}>
-      <View style={styles.mainRow}>
+      {!shopOpen && (
+        <View style={styles.closedBanner}>
+          <MaterialIcons name="storefront" size={18} color="#fff" />
+          <Text style={styles.closedBannerText}>閉店中 — 現在注文できません</Text>
+        </View>
+      )}
+      <View style={[styles.mainRow, !shopOpen && styles.mainRowDisabled]}>
         {/* 左侧：料理 / セット + 分类 */}
         <View style={styles.sidebar}>
           {MAIN_KINDS.map((kind) => {
@@ -416,13 +445,29 @@ export default function MenuScreen() {
           </View>
         </Pressable>
         <Pressable
-          style={[styles.checkoutBtn, totalCount === 0 && styles.checkoutBtnDisabled]}
-          disabled={totalCount === 0}
-          onPress={() => router.push("/order/confirm")}
+          style={[styles.checkoutBtn, (totalCount === 0 || !shopOpen) && styles.checkoutBtnDisabled]}
+          disabled={totalCount === 0 || !shopOpen}
+          onPress={() => {
+            if (!shopOpen) {
+              Alert.alert("閉店中", "現在お店は閉店中のため、注文を受け付けておりません。");
+              return;
+            }
+            router.push("/order/confirm");
+          }}
         >
           <Text style={styles.checkoutBtnText}>注文へ進む</Text>
         </Pressable>
       </View>
+
+      {!shopOpen && (
+        <View style={styles.closedOverlay}>
+          <View style={styles.closedCard}>
+            <MaterialIcons name="store" size={42} color="#dc2626" />
+            <Text style={styles.closedTitle}>閉店中</Text>
+            <Text style={styles.closedDesc}>ただいま営業時間外です。{"\n"}再開までしばらくお待ちください。</Text>
+          </View>
+        </View>
+      )}
 
       <Modal visible={cartVisible} transparent animationType="slide" onRequestClose={() => setCartVisible(false)}>
         <View style={styles.modalMask}>
@@ -605,6 +650,41 @@ export default function MenuScreen() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#fff" },
+  closedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#dc2626",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  closedBannerText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  mainRowDisabled: { opacity: 0.45 },
+  closedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.55)",
+    paddingHorizontal: 24,
+  },
+  closedCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    elevation: 4,
+    maxWidth: 300,
+  },
+  closedTitle: { fontSize: 22, fontWeight: "800", color: "#991b1b" },
+  closedDesc: { textAlign: "center", color: "#6b7280", lineHeight: 20, fontSize: 14 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
   mainRow: { flex: 1, flexDirection: "row" },
   sidebar: {

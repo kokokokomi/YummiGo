@@ -2,13 +2,17 @@ import { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 
+import { navigateToOrderDetail } from "@/src/lib/orderNavigation";
+
 export default function PaymentCancelScreen() {
   const params = useLocalSearchParams<{ orderId?: string; countdownStart?: string }>();
 
   useEffect(() => {
     if (params.orderId) {
-      const extra = params.countdownStart ? `&countdownStart=${String(params.countdownStart)}` : "";
-      router.replace(`/order/detail?id=${String(params.orderId)}&fromCancel=1${extra}`);
+      navigateToOrderDetail(String(params.orderId), {
+        countdownStart: params.countdownStart,
+        fromCancel: "1",
+      });
       return;
     }
     router.replace("/(tabs)/orders");
@@ -22,8 +26,10 @@ export default function PaymentCancelScreen() {
         style={styles.btn}
         onPress={() => {
           if (params.orderId) {
-            const extra = params.countdownStart ? `&countdownStart=${String(params.countdownStart)}` : "";
-            router.replace(`/order/detail?id=${String(params.orderId)}&fromCancel=1${extra}`);
+            navigateToOrderDetail(String(params.orderId), {
+              countdownStart: params.countdownStart,
+              fromCancel: "1",
+            });
             return;
           }
           router.replace("/(tabs)/orders");

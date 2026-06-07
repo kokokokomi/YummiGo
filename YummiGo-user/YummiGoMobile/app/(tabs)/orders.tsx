@@ -4,6 +4,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -17,6 +18,8 @@ import { router } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { getOrderPage } from "@/src/api/order";
 import type { OrderVO } from "@/src/types/api";
+
+const SIDEBAR_WIDTH = 88;
 
 const TABS = [
   { label: "すべて", value: 0 },
@@ -44,6 +47,24 @@ function statusText(status: number) {
       return "キャンセル";
     default:
       return "不明";
+  }
+}
+
+function statusColor(status: number) {
+  switch (status) {
+    case 1:
+      return "#dc2626";
+    case 2:
+      return "#f59e0b";
+    case 3:
+    case 4:
+      return "#2563eb";
+    case 5:
+      return "#16a34a";
+    case 6:
+      return "#9ca3af";
+    default:
+      return "#6b7280";
   }
 }
 
@@ -80,7 +101,6 @@ export default function OrdersScreen() {
     const windowMs = 15 * 60 * 1000;
     const candidates = [new Date(normalized).getTime(), new Date(`${normalized}Z`).getTime()].filter((v) => !Number.isNaN(v));
     if (candidates.length === 0) return parseOrderTimeMs(raw);
-    // 中文注释：优先命中 15 分钟支付窗口，避免服务端时间字符串缺少时区导致倒计时恒为 0
     const inWindow = candidates.filter((ts) => now >= ts && now - ts <= windowMs);
     if (inWindow.length > 0) return Math.max(...inWindow);
     const notFuture = candidates.filter((ts) => ts <= now + 60 * 1000);
@@ -91,21 +111,27 @@ export default function OrdersScreen() {
   const getRemainingText = (item: OrderVO) => {
     if (item.status !== 1 || item.payStatus === 1) return "";
     const createdMs = resolveOrderStartMs(item.orderTime);
-    if (Number.isNaN(createdMs)) return "残り時間: --:--";
+    if (Number.isNaN(createdMs)) return "残り --:--";
     const left = Math.max(0, Math.floor((createdMs + 15 * 60 * 1000 - nowMs) / 1000));
     const m = Math.floor(left / 60);
     const s = left % 60;
-    return `残り時間: ${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    return `残り ${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
   const notifyRejectedOrders = useCallback((records: OrderVO[]) => {
+    const freshRejects: string[] = [];
     for (const item of records) {
       const key = String(item.id);
       const prevStatus = statusByIdRef.current.get(key);
       if (shouldNotifyMerchantReject(prevStatus, item)) {
-        showMerchantRejectAlert(getMerchantRejectReason(item));
+        freshRejects.push(getMerchantRejectReason(item));
       }
       statusByIdRef.current.set(key, item.status);
+    }
+    if (freshRejects.length === 1) {
+      showMerchantRejectAlert(freshRejects[0]);
+    } else if (freshRejects.length > 1) {
+      showMerchantRejectAlert(`${freshRejects.length}件の注文が店舗により拒否されました。`);
     }
   }, []);
 
@@ -120,7 +146,6 @@ export default function OrdersScreen() {
         allListRef.current = records;
         setList(records);
       } else {
-        // 优先后端筛选，若失败则回退到本地筛选，确保菜单点击一定有效
         try {
           const page = await getOrderPage(1, 100, nextStatus);
           const records = page.records || [];
@@ -143,20 +168,14 @@ export default function OrdersScreen() {
   }, [notifyRejectedOrders]);
 
   useEffect(() => {
-    // 中文注释：仅在页面首次进入时请求一次，避免依赖变化导致重复请求
     fetchList(0);
   }, [fetchList]);
 
   useFocusEffect(
     useCallback(() => {
-      // 进入订单页时立即刷新一次，并在前台定期刷新状态
       fetchList(status, true);
-      const secondTimer = setInterval(() => {
-        setNowMs(Date.now());
-      }, 1000);
-      const timer = setInterval(() => {
-        fetchList(status, true);
-      }, 15000);
+      const secondTimer = setInterval(() => setNowMs(Date.now()), 1000);
+      const timer = setInterval(() => fetchList(status, true), 15000);
       return () => {
         clearInterval(timer);
         clearInterval(secondTimer);
@@ -165,6 +184,7 @@ export default function OrdersScreen() {
   );
 
   const onChangeStatus = async (next: number) => {
+    if (next === status) return;
     setStatus(next);
     await fetchList(next);
   };
@@ -175,101 +195,160 @@ export default function OrdersScreen() {
     setRefreshing(false);
   };
 
+  const selectedTabLabel = TABS.find((t) => t.value === status)?.label ?? "すべて";
+
+  const sidebar = (
+    <View style={styles.sidebar}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sidebarContent}>
+        {TABS.map((item) => {
+          const active = item.value === status;
+          return (
+            <Pressable
+              key={item.value}
+              style={[styles.tabItem, active && styles.tabItemActive]}
+              onPress={() => onChangeStatus(item.value)}
+            >
+              {active && <View style={styles.tabActiveBar} />}
+              <Text style={[styles.tabText, active && styles.tabTextActive]} numberOfLines={3}>
+                {item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
+      <View style={styles.page}>
+        <View style={styles.mainRow}>
+          {sidebar}
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color="#f59e0b" />
+          </View>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.page}>
-      <View style={styles.tabRow}>
-        <FlatList
-          horizontal
-          data={TABS}
-          keyExtractor={(item) => String(item.value)}
-          showsHorizontalScrollIndicator={false}
-          renderItem={({ item }) => {
-            const active = item.value === status;
-            return (
-              <Pressable style={[styles.tab, active && styles.tabActive]} onPress={() => onChangeStatus(item.value)}>
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>{item.label}</Text>
+      <View style={styles.mainRow}>
+        {sidebar}
+        <View style={styles.content}>
+          <View style={styles.contentHeader}>
+            <Text style={styles.contentTitle}>{selectedTabLabel}</Text>
+            <Text style={styles.contentSub}>{list.length} 件</Text>
+          </View>
+          <FlatList
+            data={list}
+            keyExtractor={(item) => String(item.id)}
+            contentContainerStyle={styles.list}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#f59e0b" />}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            renderItem={({ item }) => (
+              <Pressable style={styles.card} onPress={() => router.push(`/order/detail?id=${item.id}`)}>
+                <View style={styles.cardTop}>
+                  <Text style={styles.orderNo} numberOfLines={1}>{item.number}</Text>
+                  <Text style={[styles.statusBadge, { color: statusColor(item.status) }]}>
+                    {statusText(item.status)}
+                  </Text>
+                </View>
+                <Text style={styles.amount}>¥{Number(item.amount).toFixed(0)}</Text>
+                <Text style={styles.line} numberOfLines={2}>{item.snapshotAddress || "-"}</Text>
+                <Text style={styles.time}>{item.orderTime || "-"}</Text>
+                {item.status === 1 && item.payStatus !== 1 && (
+                  <Text style={styles.countdown}>{getRemainingText(item)}</Text>
+                )}
               </Pressable>
-            );
-          }}
-        />
-      </View>
-
-      <FlatList
-        data={list}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.card}
-            onPress={() => {
-              if (item.status === 1 && item.payStatus !== 1) {
-                router.push(`/order/detail?id=${item.id}`);
-                return;
-              }
-              router.push(`/order/detail?id=${item.id}`);
-            }}
-          >
-            <View style={styles.row}>
-              <Text style={styles.orderNo}>注文番号: {item.number}</Text>
-              <Text style={styles.status}>{statusText(item.status)}</Text>
-            </View>
-            <Text style={styles.line}>合計: ¥{Number(item.amount).toFixed(0)}</Text>
-            <Text style={styles.line}>住所: {item.snapshotAddress || "-"}</Text>
-            <Text style={styles.line}>時間: {item.orderTime || "-"}</Text>
-            {item.status === 1 && item.payStatus !== 1 && (
-              <Text style={styles.countdown}>{getRemainingText(item)}</Text>
             )}
-          </Pressable>
-        )}
-        ListEmptyComponent={
-          error ? (
-            <View style={styles.center}>
-              <Text style={styles.empty}>{error}</Text>
-              <Pressable style={styles.retryBtn} onPress={() => fetchList(status)}>
-                <Text style={styles.retryText}>再試行</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <Text style={styles.empty}>注文履歴がありません</Text>
-          )
-        }
-      />
+            ListEmptyComponent={
+              error ? (
+                <View style={styles.emptyBox}>
+                  <Text style={styles.empty}>{error}</Text>
+                  <Pressable style={styles.retryBtn} onPress={() => fetchList(status)}>
+                    <Text style={styles.retryText}>再試行</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={styles.emptyBox}>
+                  <Text style={styles.empty}>注文履歴がありません</Text>
+                </View>
+              )
+            }
+          />
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#f8fafc" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  tabRow: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    backgroundColor: "#fff",
+  page: { flex: 1, backgroundColor: "#fff" },
+  mainRow: { flex: 1, flexDirection: "row" },
+  sidebar: {
+    width: SIDEBAR_WIDTH,
+    backgroundColor: "#f3f4f6",
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: "#e5e7eb",
   },
-  tab: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: "#eef2ff", marginRight: 8 },
-  tabActive: { backgroundColor: "#2563eb" },
-  tabText: { color: "#111827", fontSize: 12, fontWeight: "600" },
-  tabTextActive: { color: "#fff" },
-  list: { padding: 12, gap: 10, paddingBottom: 24 },
-  card: { backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#e5e7eb", padding: 12, gap: 6 },
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  orderNo: { color: "#111827", fontWeight: "700" },
-  status: { color: "#2563eb", fontWeight: "700" },
-  line: { color: "#4b5563", fontSize: 13 },
-  countdown: { color: "#dc2626", fontWeight: "700", fontSize: 13, marginTop: 2 },
-  empty: { marginTop: 36, textAlign: "center", color: "#9ca3af" },
-  retryBtn: { marginTop: 10, alignSelf: "center", backgroundColor: "#2563eb", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  sidebarContent: { paddingBottom: 24 },
+  tabItem: {
+    minHeight: 52,
+    justifyContent: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    position: "relative",
+  },
+  tabItemActive: { backgroundColor: "#fff" },
+  tabActiveBar: {
+    position: "absolute",
+    left: 0,
+    top: 10,
+    bottom: 10,
+    width: 3,
+    borderRadius: 2,
+    backgroundColor: "#f59e0b",
+  },
+  tabText: {
+    fontSize: 12,
+    color: "#6b7280",
+    textAlign: "center",
+    lineHeight: 16,
+    fontWeight: "600",
+  },
+  tabTextActive: { color: "#111827", fontWeight: "800" },
+  content: { flex: 1, backgroundColor: "#fff" },
+  contentHeader: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#f1f5f9",
+  },
+  contentTitle: { fontSize: 17, fontWeight: "800", color: "#111827" },
+  contentSub: { marginTop: 2, fontSize: 12, color: "#9ca3af" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  list: { padding: 12, paddingBottom: 24, flexGrow: 1 },
+  separator: { height: 10 },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#e5e7eb",
+    padding: 12,
+    gap: 4,
+  },
+  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 },
+  orderNo: { flex: 1, color: "#111827", fontWeight: "700", fontSize: 14 },
+  statusBadge: { fontSize: 12, fontWeight: "800" },
+  amount: { fontSize: 18, fontWeight: "800", color: "#111827", marginTop: 2 },
+  line: { color: "#6b7280", fontSize: 13, lineHeight: 18 },
+  time: { color: "#9ca3af", fontSize: 12 },
+  countdown: { color: "#dc2626", fontWeight: "700", fontSize: 13, marginTop: 4 },
+  emptyBox: { alignItems: "center", paddingTop: 48, gap: 10 },
+  empty: { textAlign: "center", color: "#9ca3af", fontSize: 14 },
+  retryBtn: { backgroundColor: "#f59e0b", borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 },
   retryText: { color: "#fff", fontWeight: "700" },
 });
-

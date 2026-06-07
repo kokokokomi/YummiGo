@@ -13,6 +13,10 @@ export default function TabLayout() {
     }
   }, [loading, token]);
 
+  if (loading || !token) {
+    return null;
+  }
+
   return (
     <Tabs
       screenOptions={{

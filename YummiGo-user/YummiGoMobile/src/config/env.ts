@@ -51,3 +51,12 @@ export const GOOGLE_EXPO_CLIENT_ID =
   extra.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID ||
   "";
 
+/**
+ * 演示用：强制走 auth.expo.io 代理（EAS Update / 独立 App 也适用）。
+ * Google Console 里需已配置 https://auth.expo.io/@owner/slug
+ */
+export const GOOGLE_USE_EXPO_PROXY =
+  (process.env.EXPO_PUBLIC_GOOGLE_USE_EXPO_PROXY ??
+    extra.EXPO_PUBLIC_GOOGLE_USE_EXPO_PROXY ??
+    "true") !== "false";
+

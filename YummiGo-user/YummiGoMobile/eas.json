@@ -14,12 +14,14 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "http://13.113.53.71"
+        "EXPO_PUBLIC_API_BASE_URL": "http://13.113.53.71",
+        "EXPO_PUBLIC_GOOGLE_USE_EXPO_PROXY": "true"
       }
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "http://13.113.53.71"
+        "EXPO_PUBLIC_API_BASE_URL": "http://13.113.53.71",
+        "EXPO_PUBLIC_GOOGLE_USE_EXPO_PROXY": "true"
       }
     }
   }

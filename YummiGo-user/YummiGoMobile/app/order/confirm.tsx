@@ -25,6 +25,7 @@ import { getCartList } from "@/src/api/cart";
 import { createOrderPayment, submitOrder } from "@/src/api/order";
 import { API_BASE_URL } from "@/src/config/env";
 import { normalizeMajorAmount, toMinorUnit } from "@/src/lib/currency";
+import { navigateToOrderDetail } from "@/src/lib/orderNavigation";
 import { useAuth } from "@/src/state/auth";
 import { useCart } from "@/src/state/cart";
 import type { Address } from "@/src/types/api";
@@ -282,14 +283,11 @@ export default function OrderConfirmScreen() {
           customerEmail: profile?.email,
         });
 
-        // 中文注释：如果用户从支付页手动返回且未触发深链接，兜底跳转到订单详情页展示倒计时
+        navigateToOrderDetail(String(order.id), { countdownStart });
         await WebBrowser.openBrowserAsync(payment.checkoutUrl);
-        if (aliveRef.current) {
-          router.replace(`/order/detail?id=${order.id}&countdownStart=${countdownStart}`);
-        }
       } catch (e: any) {
         Alert.alert("決済開始失敗", e?.message || "支払いページの作成に失敗しました。注文詳細から再度お試しください。");
-        router.replace(`/order/detail?id=${order.id}&countdownStart=${countdownStart}`);
+        navigateToOrderDetail(String(order.id), { countdownStart });
       }
     } catch (e: any) {
       refresh().catch(() => {});

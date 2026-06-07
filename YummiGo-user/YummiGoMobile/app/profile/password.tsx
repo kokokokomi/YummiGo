@@ -11,8 +11,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
-import { router } from "expo-router";
-
+import { navigateBack } from "@/src/lib/navigation";
 import { updateUserPassword } from "@/src/api/user";
 
 export default function ProfilePasswordScreen() {
@@ -39,7 +38,7 @@ export default function ProfilePasswordScreen() {
       setSubmitting(true);
       await updateUserPassword(newPassword);
       Alert.alert("更新完了", "パスワードを更新しました");
-      router.back();
+      navigateBack("/profile/edit");
     } catch (e: any) {
       Alert.alert("更新失敗", e?.message || "パスワード更新に失敗しました");
     } finally {

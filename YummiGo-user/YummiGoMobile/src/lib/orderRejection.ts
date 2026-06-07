@@ -1,5 +1,6 @@
-import { Alert } from "react-native";
 import type { OrderVO } from "@/src/types/api";
+
+import { showAutoDismissToast } from "@/src/lib/toast";
 
 /** 仅商家拒单原因（用户自行取消只有 cancelReason，不弹拒单窗） */
 export function getMerchantRejectReason(order?: Pick<OrderVO, "rejectionReason"> | null) {
@@ -7,10 +8,10 @@ export function getMerchantRejectReason(order?: Pick<OrderVO, "rejectionReason">
 }
 
 export function showMerchantRejectAlert(reason: string) {
-  Alert.alert(
+  showAutoDismissToast(
     "店舗により拒否されました",
     reason || "店舗都合により注文をお受けできませんでした。",
-    [{ text: "OK" }]
+    4500
   );
 }
 
