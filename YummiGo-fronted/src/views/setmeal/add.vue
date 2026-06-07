@@ -329,20 +329,37 @@ const onCropDragStart = (event: PointerEvent) => {
   window.addEventListener('pointerup', stopDrag)
 }
 
+const getFileExt = (name: string) => {
+  const segments = name.split('.')
+  return segments.length > 1 ? segments.pop()!.toLowerCase() : ''
+}
+
 const openCropDialog = async (file: File) => {
-  if (!file.type.startsWith('image/')) {
+  const ext = getFileExt(file.name || '')
+  const allowByExt = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif']
+  const isImage = file.type.startsWith('image/') || allowByExt.includes(ext)
+  if (!isImage) {
     ElMessage.warning('画像ファイルを選択してください')
     return
   }
-  selectedImageData.value = await fileToDataUrl(file)
-  const image = await loadImage(selectedImageData.value)
-  crop.naturalWidth = image.width
-  crop.naturalHeight = image.height
-  crop.size = Math.min(image.width, image.height)
-  crop.x = Math.floor((image.width - crop.size) / 2)
-  crop.y = Math.floor((image.height - crop.size) / 2)
-  cropDialogVisible.value = true
-  await updateCropPreview()
+  if (['heic', 'heif'].includes(ext) || file.type === 'image/heic' || file.type === 'image/heif') {
+    ElMessage.warning('HEIC/HEIF は現在のブラウザで裁剪に対応していません。PNG/JPG に変換してから再度お試しください。')
+    return
+  }
+  try {
+    selectedImageData.value = await fileToDataUrl(file)
+    const image = await loadImage(selectedImageData.value)
+    crop.naturalWidth = image.width
+    crop.naturalHeight = image.height
+    crop.size = Math.min(image.width, image.height)
+    crop.x = Math.floor((image.width - crop.size) / 2)
+    crop.y = Math.floor((image.height - crop.size) / 2)
+    cropDialogVisible.value = true
+    await updateCropPreview()
+  } catch (error) {
+    console.error('openCropDialog failed', error)
+    ElMessage.error('画像の読み込みに失敗しました。別の画像で再試行してください。')
+  }
 }
 
 // 在文件管理器中选择图片后触发的改变事件：预览 + 裁剪
@@ -350,7 +367,12 @@ const onFileChange1 = async (e: Event) => {
   const target = e.target as HTMLInputElement
   const files = target.files
   if (files && files.length > 0) {
-    await openCropDialog(files[0])
+    try {
+      await openCropDialog(files[0])
+    } catch (error) {
+      console.error('onFileChange1 failed', error)
+      ElMessage.error('画像処理に失敗しました')
+    }
   }
   target.value = ''
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import type { CheckboxValueType } from 'element-plus'
 import { getCategoryPageListAPI } from '@/api/category'
 import { getDishPageListAPI } from '@/api/dish'
 import Empty from '@/components/Empty.vue'
@@ -130,13 +131,13 @@ const checkTypeHandle = (ind: number, id: number) => {
 // 使用setup语法糖的话要先引入defineEmits来定义
 const emit = defineEmits(["selectList"])
 // 点击菜品复选框checkbox，将选中的菜品添加到右侧已选菜品列表/从右边已选菜品列表中删除
-const checkedListHandle = (value: [string]) => {
+const checkedListHandle = (value: CheckboxValueType[]) => {
   console.log('点击了checkbox，看看点了啥', value)
   checkedListAll.value.reverse()
   const list = allDishList.value.filter((item) => {
     let data
     value.forEach((it) => {
-      if (item.name == it) {
+      if (item.name === String(it)) {
         data = item
       }
     })
@@ -163,7 +164,7 @@ const checkedListHandle = (value: [string]) => {
   })
   if (value.length < arrData.length) {
     checkedListAll.value = checkedListAll.value.filter((item) => {
-      if (value.some((it) => it == item.name)) {
+      if (value.some((it) => String(it) === item.name)) {
         return item
       }
     })

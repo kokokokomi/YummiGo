@@ -220,7 +220,7 @@ const deleteBatch = (row?: any) => {
       <el-table-column prop="name" label="セット名" align="center" />
       <el-table-column prop="image" label="画像" align="center">
         <template #default="scope">
-          <img v-if="scope.row.image || scope.row.pic" :src="resolveImageUrl(scope.row.image || scope.row.pic)" alt="" />
+          <img v-if="scope.row.image || scope.row.pic" v-lazy="resolveImageUrl(scope.row.image || scope.row.pic)" alt="" />
           <img v-else src="/src/assets/image/user_default.png" alt="" />
         </template>
       </el-table-column>

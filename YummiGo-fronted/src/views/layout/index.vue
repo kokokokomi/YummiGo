@@ -6,6 +6,8 @@ import { ref, reactive, onMounted, onBeforeUnmount, watch } from 'vue'
 import { fixPwdAPI } from '@/api/employee'
 import { getStatusAPI, fixStatusAPI } from '@/api/shop'
 import { ElNotification } from 'element-plus'
+import { createMerchantWebSocket, type OrderWsPayload } from '@/utils/merchantWebSocket'
+import { useOrderNotifyStore } from '@/store/orderNotify'
 
 // ------ data ------
 const dialogFormVisible = ref(false)
@@ -17,37 +19,37 @@ const menuList = [
   {
     title: 'ダッシュボード',
     path: '/dashboard',
-    icon: 'pieChart',
+    icon: 'PieChart',
   },
   {
     title: 'データ統計',
     path: '/statistics',
-    icon: 'memo',
+    icon: 'Memo',
   },
   {
     title: '注文管理',
     path: '/order',
-    icon: 'collection',
+    icon: 'Collection',
   },
   {
     title: 'カテゴリ管理',
     path: '/category',
-    icon: 'postcard',
+    icon: 'Postcard',
   },
   {
     title: 'セットメニュー管理',
     path: '/setmeal',
-    icon: 'user',
+    icon: 'User',
   },
   {
     title: '料理管理',
     path: '/dish',
-    icon: 'dish',
+    icon: 'Dish',
   },
   {
     title: 'スタッフ管理',
     path: '/employee',
-    icon: 'setting',
+    icon: 'Setting',
   },
 ]
 
@@ -201,83 +203,107 @@ const quitFn = () => {
     })
 }
 
-// refs
-const websocket = ref<WebSocket | null>(null)
 const shopShow = ref(false)
+const wsErrorNotified = ref(false)
+let closeWebSocket: (() => void) | null = null
 
 const audio1 = ref<HTMLAudioElement | null>(null)
 const audio2 = ref<HTMLAudioElement | null>(null)
+const audioUnlocked = ref(false)
 
-  //window.location.host自动获取当前网站的域名ip
+const unlockAudio = async () => {
+  if (audioUnlocked.value) return
+  const players = [audio1.value, audio2.value].filter(Boolean) as HTMLAudioElement[]
+  for (const player of players) {
+    try {
+      player.muted = true
+      await player.play()
+      player.pause()
+      player.currentTime = 0
+      player.muted = false
+    } catch {
+      // 浏览器策略限制时忽略，后续通知仍显示弹窗
+    }
+  }
+  audioUnlocked.value = true
+}
+
+const playOrderSound = (type?: number) => {
+  const player = type === 2 ? audio2.value : audio1.value
+  if (!player) return
+  try {
+    player.currentTime = 0
+    const result = player.play()
+    if (result && typeof result.catch === 'function') {
+      result.catch(() => {
+        // macOS / 浏览器更新后常需用户先与页面交互才能播放
+      })
+    }
+  } catch {
+    // 音效失败不影响弹窗
+  }
+}
+
+const orderNotifyStore = useOrderNotifyStore()
+
+const showOrderNotification = (jsonMsg: OrderWsPayload) => {
+  const payDone = jsonMsg.event === 'stripe_payment_success'
+  const title = payDone ? '支払い完了' : jsonMsg.type === 1 ? '受付待ち' : '催促'
+  const htmlMessage =
+    jsonMsg.type === 1
+      ? `<span>${payDone ? '<b>Stripe 決済済み</b> ' : ''}<span style="color:#419EFF">注文対応が必要です</span>、${jsonMsg.content || ''}、すぐに注文を確認してください</span>`
+      : `${jsonMsg.content || ''}<span style='color:#419EFF;cursor: pointer'>処理する</span>`
+
+  ElNotification({
+    title,
+    message: htmlMessage,
+    type: jsonMsg.type === 2 ? 'warning' : 'success',
+    position: 'top-right',
+    duration: 0,
+    showClose: true,
+    zIndex: 3000,
+    dangerouslyUseHTMLString: true,
+    onClick: () => {
+      const orderId = jsonMsg.orderId ? String(jsonMsg.orderId) : ''
+      if (!orderId) return
+      router.push({ path: '/order', query: { orderId, status: '2' } })
+    },
+  })
+}
+
 const webSocket = () => {
-  const clientId = Math.random().toString(36).slice(2)
-  // 開発時は Vite が /ws を Spring(8080) にプロキシ。本番は同一オリジンまたは Nginx で /ws をバックエンドへ
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const socketUrl = `${protocol}//${window.location.host}/ws/${clientId}`
-  console.log('socketUrl', socketUrl)
-
-  if (typeof WebSocket == 'undefined') {
-    console.log('このブラウザではリアルタイム通知を利用できません。Chrome をご利用ください。')
+  if (typeof WebSocket === 'undefined') {
     ElNotification({
       title: 'お知らせ',
       message: 'このブラウザではリアルタイム通知を利用できません。Chrome をご利用ください。',
       type: 'warning',
       duration: 0,
     })
-  } else {
-    websocket.value = new WebSocket(socketUrl)
-    websocket.value.onopen = () => {
-      console.log('浏览器WebSocket已打开')
-    }
-    websocket.value.onmessage = (msg) => {
-      console.log('接收到的消息', msg)
-      audio1.value && audio1.value.click()
-      // 重置音频，从头开始播放
-      audio1.value!.currentTime = 0
-      audio2.value!.currentTime = 0
-      // 解析服务器通过WebSocket发送的消息
-      const jsonMsg = JSON.parse(msg.data)
-      // event === stripe_payment_success は Stripe Webhook 落库后推送；その他 type 1/2 は従来ロジック
-      if (jsonMsg.type === 1) {
-        audio1.value!.play()
-      } else if (jsonMsg.type === 2) {
-        audio2.value!.play()
-      }
-      const payDone = jsonMsg.event === 'stripe_payment_success'
-      const title =
-        payDone ? '支払い完了' : jsonMsg.type === 1 ? '受付待ち' : '催促'
-      const htmlMessage =
-        jsonMsg.type === 1
-          ? `<span>${payDone ? '<b>Stripe 決済済み</b> ' : ''}<span style="color:#419EFF">注文対応が必要です</span>、${jsonMsg.content}、すぐに注文を確認してください</span>`
-          : `${jsonMsg.content}<span style='color:#419EFF;cursor: pointer'>処理する</span>`
-      // 右上角弹窗提示
-      ElNotification({
-        title,
-        message: htmlMessage,
-        duration: 0,
-        dangerouslyUseHTMLString: true,
-        onClick: () => {
-          router.push(`/order?orderId=${jsonMsg.orderId}`).catch((err) => {
-            console.log(err)
-          })
-          setTimeout(() => {
-            location.reload()
-          }, 100)
-        },
-      })
-    }
-    websocket.value.onerror = () => {
-      ElNotification({
-        title: 'エラー',
-        message: 'サーバーエラーによりリアルタイム通知を受信できません',
-        type: 'error',
-        duration: 0,
-      })
-    }
-    websocket.value.onclose = () => {
-      console.log('WebSocket已关闭')
-    }
+    return
   }
+
+  closeWebSocket = createMerchantWebSocket({
+    onConnect: () => {
+      wsErrorNotified.value = false
+    },
+    onDisconnect: () => {},
+    onError: () => {
+      if (wsErrorNotified.value) return
+      wsErrorNotified.value = true
+      ElNotification({
+        title: '接続エラー',
+        message: 'リアルタイム通知の接続に失敗しました。自動で再接続を試みます。',
+        type: 'warning',
+        duration: 5000,
+      })
+    },
+    onMessage: (jsonMsg) => {
+      console.log('接收到的消息', jsonMsg)
+      orderNotifyStore.notify(jsonMsg)
+      playOrderSound(jsonMsg.type)
+      showOrderNotification(jsonMsg)
+    },
+  })
 }
 
 const handleClose = () => {
@@ -295,16 +321,21 @@ const fetchShopStatus = async () => {
 }
 
 // lifecycle hooks
+const handleDocumentClick = () => {
+  handleClose()
+  void unlockAudio()
+}
+
 onMounted(() => {
-  document.addEventListener('click', handleClose)
+  document.addEventListener('click', handleDocumentClick)
   fetchShopStatus()
   webSocket()
 })
 
 onBeforeUnmount(() => {
-  if (websocket.value) {
-    websocket.value.close()
-  }
+  document.removeEventListener('click', handleDocumentClick)
+  closeWebSocket?.()
+  closeWebSocket = null
 })
 </script>
 
@@ -354,29 +385,45 @@ onBeforeUnmount(() => {
         <el-icon class="icon1" v-else>
           <Fold @click.stop="isCollapse = !isCollapse" />
         </el-icon>
-        <div class="status">{{ status == 1 ? '営業中' : "閉店中" }}</div>
-
-        <div class="rightAudio">
-          <audio ref="audio1" hidden>
-            <source src="../../assets/preview.mp3" type="audio/mp3" />
-          </audio>
-          <audio ref="audio2" hidden>
-            <source src="../../assets/reminder.mp3" type="audio/mp3" />
-          </audio>
+        <div class="status" :class="status == 1 ? 'status-open' : 'status-closed'">
+          {{ status == 1 ? '営業中' : '閉店中' }}
         </div>
-        <el-dropdown style="float: right">
-          <el-button type="primary">
-            {{ userInfoStore.userInfo ? userInfoStore.userInfo.userName : '未ログイン' }}
-            <el-icon class="arrow-down-icon"><arrow-down /></el-icon>
-          </el-button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item @click="dialogFormVisible = true">パスワード変更</el-dropdown-item>
-              <el-dropdown-item @click="quitFn">ログアウト</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-        <el-button class="status-change" @click="dialogStatusVisible = true">店舗状態の設定</el-button>
+
+        <div class="header-right">
+          <div class="rightAudio">
+            <audio ref="audio1" hidden>
+              <source src="../../assets/preview.mp3" type="audio/mp3" />
+            </audio>
+            <audio ref="audio2" hidden>
+              <source src="../../assets/reminder.mp3" type="audio/mp3" />
+            </audio>
+          </div>
+          <el-button class="status-change" @click="dialogStatusVisible = true">店舗状態</el-button>
+          <el-dropdown trigger="click" popper-class="user-dropdown-popper">
+            <div class="user-trigger">
+              <div class="user-avatar">
+                {{ (userInfoStore.userInfo?.userName || 'U').slice(0, 1).toUpperCase() }}
+              </div>
+              <div class="user-meta">
+                <span class="user-name">{{ userInfoStore.userInfo?.userName || '未ログイン' }}</span>
+                <span class="user-role">管理者</span>
+              </div>
+              <el-icon class="user-chevron"><arrow-down /></el-icon>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="dialogFormVisible = true">
+                  <el-icon><Lock /></el-icon>
+                  パスワード変更
+                </el-dropdown-item>
+                <el-dropdown-item divided @click="quitFn">
+                  <el-icon><SwitchButton /></el-icon>
+                  ログアウト
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
       </el-header>
       <el-container class="box1">
         <!-- 左侧导航菜单区域 -->
@@ -398,7 +445,7 @@ onBeforeUnmount(() => {
           <el-main>
             <router-view></router-view>
           </el-main>
-          <el-footer>© 2025.8.28 YummiGo Tech and Fun. All rights reserved.</el-footer>
+          <el-footer>© 2025.8.28 YummiGo kokomiorz@gmail. All rights reserved.</el-footer>
         </el-container>
       </el-container>
     </el-container>
@@ -431,46 +478,103 @@ onBeforeUnmount(() => {
 
   .status {
     display: inline-block;
-    align-items: center;
     vertical-align: top;
-    line-height: 30px;
-    margin: 15px 50px;
-    padding: 0 10px;
-    border-radius: 5px;
-    background-color: #eebb00;
+    line-height: 28px;
+    margin: 16px 24px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .status-open {
+    background-color: #16a34a;
     color: #fff;
+    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.35);
+  }
+
+  .status-closed {
+    background-color: #dc2626;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35);
+  }
+
+  .header-right {
+    float: right;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 60px;
+    padding-right: 12px;
   }
 }
 
 .rightAudio {
-  float: right;
-  // margin: 14px 20px;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
 
 .status-change {
-  float: right;
-  margin: 14px 20px;
-  background-color: rgba(255, 255, 255, 0.3);
-  border: none;
+  background-color: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   color: #fff;
+  border-radius: 999px;
+  padding: 8px 14px;
+  height: auto;
 }
 
-.user {
-  float: right;
-  margin-right: 20px;
+.user-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  cursor: pointer;
+  transition: background 0.2s ease;
 }
 
-.el-dropdown .el-button {
-  float: right;
-  width: 80px;
-  margin: 14px 20px;
-  background-color: #eebb00;
-  border-color: #eebb00;
-  color: #fff;
+.user-trigger:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
 
-  .arrow-down-icon {
-    margin-left: 5px;
-  }
+.user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #1f2937;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 72px;
+}
+
+.user-name {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.user-role {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 11px;
+}
+
+.user-chevron {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
 }
 
 .box1 {
@@ -609,5 +713,13 @@ a:hover {
 
 .el-menu--collapse {
   width: 85px;
+}
+
+.user-dropdown-popper .el-dropdown-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 168px;
+  font-weight: 600;
 }
 </style>

@@ -35,7 +35,8 @@ const croppedPreview = ref('')
 const crop = reactive({
   x: 0,
   y: 0,
-  size: 0,
+  width: 0,
+  height: 0,
   naturalWidth: 0,
   naturalHeight: 0,
 })
@@ -48,27 +49,35 @@ const dragging = reactive({
   startCropY: 0,
 })
 const outputMaxBytes = 500 * 1024
-const maxCropSize = computed(() => Math.min(crop.naturalWidth, crop.naturalHeight))
-const minCropSize = computed(() => Math.min(80, maxCropSize.value || 80))
-const maxX = computed(() => Math.max(crop.naturalWidth - crop.size, 0))
-const maxY = computed(() => Math.max(crop.naturalHeight - crop.size, 0))
+const minCropEdge = 80
+const maxCropWidth = computed(() => Math.max(crop.naturalWidth, 0))
+const maxCropHeight = computed(() => Math.max(crop.naturalHeight, 0))
+const minCropWidth = computed(() => Math.min(minCropEdge, maxCropWidth.value || minCropEdge))
+const minCropHeight = computed(() => Math.min(minCropEdge, maxCropHeight.value || minCropEdge))
+const maxX = computed(() => Math.max(crop.naturalWidth - crop.width, 0))
+const maxY = computed(() => Math.max(crop.naturalHeight - crop.height, 0))
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
 const normalizeCropValue = () => {
   const safeNaturalWidth = Number.isFinite(crop.naturalWidth) ? crop.naturalWidth : 0
   const safeNaturalHeight = Number.isFinite(crop.naturalHeight) ? crop.naturalHeight : 0
-  const safeMaxCropSize = Math.max(Math.min(safeNaturalWidth, safeNaturalHeight), 0)
-  const safeMinCropSize = Math.min(80, safeMaxCropSize || 80)
-  if (safeMaxCropSize <= 0) {
-    crop.size = 0
+  const safeMaxCropWidth = Math.max(safeNaturalWidth, 0)
+  const safeMaxCropHeight = Math.max(safeNaturalHeight, 0)
+  const safeMinCropWidth = Math.min(minCropEdge, safeMaxCropWidth || minCropEdge)
+  const safeMinCropHeight = Math.min(minCropEdge, safeMaxCropHeight || minCropEdge)
+  if (safeMaxCropWidth <= 0 || safeMaxCropHeight <= 0) {
+    crop.width = 0
+    crop.height = 0
     crop.x = 0
     crop.y = 0
     return
   }
-  const safeSize = Number.isFinite(crop.size) ? crop.size : safeMinCropSize
-  crop.size = clamp(safeSize, safeMinCropSize, safeMaxCropSize)
-  const safeMaxX = Math.max(safeNaturalWidth - crop.size, 0)
-  const safeMaxY = Math.max(safeNaturalHeight - crop.size, 0)
+  const safeWidth = Number.isFinite(crop.width) ? crop.width : safeMinCropWidth
+  const safeHeight = Number.isFinite(crop.height) ? crop.height : safeMinCropHeight
+  crop.width = clamp(safeWidth, safeMinCropWidth, safeMaxCropWidth)
+  crop.height = clamp(safeHeight, safeMinCropHeight, safeMaxCropHeight)
+  const safeMaxX = Math.max(safeNaturalWidth - crop.width, 0)
+  const safeMaxY = Math.max(safeNaturalHeight - crop.height, 0)
   const safeX = Number.isFinite(crop.x) ? crop.x : 0
   const safeY = Number.isFinite(crop.y) ? crop.y : 0
   crop.x = clamp(safeX, 0, safeMaxX)
@@ -76,7 +85,7 @@ const normalizeCropValue = () => {
 }
 
 const cropBoxStyle = computed(() => {
-  if (!cropImageRef.value || crop.naturalWidth <= 0 || crop.naturalHeight <= 0 || crop.size <= 0) {
+  if (!cropImageRef.value || crop.naturalWidth <= 0 || crop.naturalHeight <= 0 || crop.width <= 0 || crop.height <= 0) {
     return {}
   }
   const imageWidth = cropImageRef.value.clientWidth || 0
@@ -87,8 +96,8 @@ const cropBoxStyle = computed(() => {
   const widthRatio = imageWidth / crop.naturalWidth
   const heightRatio = imageHeight / crop.naturalHeight
   return {
-    width: `${Math.max(crop.size * widthRatio, 0)}px`,
-    height: `${Math.max(crop.size * heightRatio, 0)}px`,
+    width: `${Math.max(crop.width * widthRatio, 0)}px`,
+    height: `${Math.max(crop.height * heightRatio, 0)}px`,
     transform: `translate(${Math.max(crop.x * widthRatio, 0)}px, ${Math.max(crop.y * heightRatio, 0)}px)`,
   }
 })
@@ -168,38 +177,61 @@ const loadImage = (src: string) =>
     image.src = src
   })
 
+const loadImageFromFile = (file: File) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const blobUrl = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      URL.revokeObjectURL(blobUrl)
+      resolve(image)
+    }
+    image.onerror = async (error) => {
+      URL.revokeObjectURL(blobUrl)
+      try {
+        const dataUrl = await fileToDataUrl(file)
+        const fallbackImage = await loadImage(dataUrl)
+        resolve(fallbackImage)
+      } catch {
+        reject(error)
+      }
+    }
+    image.src = blobUrl
+  })
+
 const getBase64Size = (base64: string) => {
   const content = base64.split(',')[1] || ''
   return Math.ceil((content.length * 3) / 4)
 }
 
 const createCroppedBase64 = async () => {
-  if (!selectedImageData.value || crop.size <= 0) {
+  if (!selectedImageData.value || crop.width <= 0 || crop.height <= 0) {
     return ''
   }
   const image = await loadImage(selectedImageData.value)
-  let renderSize = crop.size
+  let renderWidth = crop.width
+  let renderHeight = crop.height
   let quality = 0.9
-  const minRenderSize = 240
+  const minRenderEdge = 240
   const canvas = document.createElement('canvas')
   let result = ''
   while (true) {
-    canvas.width = Math.floor(renderSize)
-    canvas.height = Math.floor(renderSize)
+    canvas.width = Math.floor(renderWidth)
+    canvas.height = Math.floor(renderHeight)
     const context = canvas.getContext('2d')
     if (!context) {
       break
     }
     context.clearRect(0, 0, canvas.width, canvas.height)
-    context.drawImage(image, crop.x, crop.y, crop.size, crop.size, 0, 0, canvas.width, canvas.height)
+    context.drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, canvas.width, canvas.height)
     result = canvas.toDataURL('image/jpeg', quality)
-    if (getBase64Size(result) <= outputMaxBytes || (quality <= 0.5 && renderSize <= minRenderSize)) {
+    if (getBase64Size(result) <= outputMaxBytes || (quality <= 0.5 && renderWidth <= minRenderEdge && renderHeight <= minRenderEdge)) {
       break
     }
     if (quality > 0.5) {
       quality -= 0.1
     } else {
-      renderSize = Math.max(Math.floor(renderSize * 0.8), minRenderSize)
+      renderWidth = Math.max(Math.floor(renderWidth * 0.8), minRenderEdge)
+      renderHeight = Math.max(Math.floor(renderHeight * 0.8), minRenderEdge)
     }
   }
   return result
@@ -246,7 +278,7 @@ const onDragMove = (event: PointerEvent) => {
 }
 
 const onCropDragStart = (event: PointerEvent) => {
-  if (crop.size <= 0 || !cropImageRef.value) {
+  if (crop.width <= 0 || crop.height <= 0 || !cropImageRef.value) {
     return
   }
   dragging.active = true
@@ -258,20 +290,55 @@ const onCropDragStart = (event: PointerEvent) => {
   window.addEventListener('pointerup', stopDrag)
 }
 
+const onCropStagePointerDown = (event: PointerEvent) => {
+  if (!cropImageRef.value || crop.width <= 0 || crop.height <= 0 || crop.naturalWidth <= 0 || crop.naturalHeight <= 0) {
+    return
+  }
+  const rect = cropImageRef.value.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0) {
+    return
+  }
+  const offsetX = event.clientX - rect.left
+  const offsetY = event.clientY - rect.top
+  const rawCenterX = (offsetX / rect.width) * crop.naturalWidth
+  const rawCenterY = (offsetY / rect.height) * crop.naturalHeight
+  crop.x = rawCenterX - crop.width / 2
+  crop.y = rawCenterY - crop.height / 2
+  onCropParamChange()
+}
+
+const getFileExt = (name: string) => {
+  const segments = name.split('.')
+  return segments.length > 1 ? segments.pop()!.toLowerCase() : ''
+}
+
 const openCropDialog = async (file: File) => {
-  if (!file.type.startsWith('image/')) {
+  const ext = getFileExt(file.name || '')
+  const allowByExt = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif']
+  const isImage = file.type.startsWith('image/') || allowByExt.includes(ext)
+  if (!isImage) {
     ElMessage.warning('画像ファイルを選択してください')
     return
   }
-  selectedImageData.value = await fileToDataUrl(file)
-  const image = await loadImage(selectedImageData.value)
-  crop.naturalWidth = image.width
-  crop.naturalHeight = image.height
-  crop.size = Math.min(image.width, image.height)
-  crop.x = Math.floor((image.width - crop.size) / 2)
-  crop.y = Math.floor((image.height - crop.size) / 2)
-  cropDialogVisible.value = true
-  await updateCropPreview()
+  if (['heic', 'heif'].includes(ext) || file.type === 'image/heic' || file.type === 'image/heif') {
+    ElMessage.warning('HEIC/HEIF は現在のブラウザで裁剪に対応していません。PNG/JPG に変換してから再度お試しください。')
+    return
+  }
+  try {
+    selectedImageData.value = await fileToDataUrl(file)
+    const image = await loadImageFromFile(file)
+    crop.naturalWidth = image.width
+    crop.naturalHeight = image.height
+    crop.width = Math.floor(image.width * 0.7)
+    crop.height = Math.floor(image.height * 0.7)
+    crop.x = Math.floor((image.width - crop.width) / 2)
+    crop.y = Math.floor((image.height - crop.height) / 2)
+    cropDialogVisible.value = true
+    await updateCropPreview()
+  } catch (error) {
+    console.error('openCropDialog failed', error)
+    ElMessage.error(`画像の読み込みに失敗しました（${file.name || 'unknown'}）。形式を変換して再試行してください。`)
+  }
 }
 
 // 在文件管理器中选择图片后触发的改变事件：预览 + 裁剪
@@ -279,7 +346,12 @@ const onFileChange1 = async (e: Event) => {
   const target = e.target as HTMLInputElement
   const files = target.files
   if (files && files.length > 0) {
-    await openCropDialog(files[0])
+    try {
+      await openCropDialog(files[0])
+    } catch (error) {
+      console.error('onFileChange1 failed', error)
+      ElMessage.error('画像処理に失敗しました')
+    }
   }
   target.value = ''
 }
@@ -303,10 +375,13 @@ const submit = async () => {
   try {
     const valid = await addRef.value.validate();
     if (valid) {
-      console.log('submit')
-      console.log(form)
-      // 在这里执行表单提交操作
-      const res = await addEmployeeAPI(form)
+      const payload = {
+        name: form.name,
+        username: form.account,
+        phone: form.phone,
+        sex: String(form.gender),
+      }
+      const res = await addEmployeeAPI(payload)
       if (res.data.code !== 1) {
         console.log('新增员工失败！')
         return false
@@ -347,13 +422,22 @@ init()
     <el-dialog v-model="cropDialogVisible" width="700px" title="画像を裁剪" @closed="stopDrag">
       <div class="cropper-wrap">
         <div class="cropper-panel">
-          <div class="crop-stage">
+          <div class="crop-stage" @pointerdown="onCropStagePointerDown">
             <img ref="cropImageRef" class="origin-img" :src="selectedImageData" alt="origin" />
-            <div class="crop-box" :style="cropBoxStyle" @pointerdown.prevent="onCropDragStart" />
+            <div class="crop-box" :style="cropBoxStyle" @pointerdown.stop.prevent="onCropDragStart" />
           </div>
           <el-form class="crop-form" label-position="top">
-            <el-form-item label="サイズ">
-              <el-slider v-model="crop.size" :min="minCropSize" :max="maxCropSize" :step="1" @input="onCropSizeChange" />
+            <el-form-item label="幅">
+              <el-slider v-model="crop.width" :min="minCropWidth" :max="maxCropWidth" :step="1" @input="onCropSizeChange" />
+            </el-form-item>
+            <el-form-item label="高さ">
+              <el-slider v-model="crop.height" :min="minCropHeight" :max="maxCropHeight" :step="1" @input="onCropSizeChange" />
+            </el-form-item>
+            <el-form-item label="横位置">
+              <el-slider v-model="crop.x" :min="0" :max="maxX" :step="1" @input="onCropParamChange" />
+            </el-form-item>
+            <el-form-item label="縦位置">
+              <el-slider v-model="crop.y" :min="0" :max="maxY" :step="1" @input="onCropParamChange" />
             </el-form-item>
           </el-form>
         </div>

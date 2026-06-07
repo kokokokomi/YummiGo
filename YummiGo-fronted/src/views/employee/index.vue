@@ -5,18 +5,15 @@ import { getEmployeePageListAPI, updateEmployeeStatusAPI, deleteEmployeeAPI } fr
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { useUserInfoStore } from '@/store'
-import { resolveImageUrl } from '@/utils/image'
 
 // ------ .d.ts 属性类型接口 ------
 interface employee {
   id: number
   name: string
-  account: string
+  username: string
   phone: string
-  age: number
-  gender: string
-  pic: string
-  status: string
+  sex: string
+  status: number
   updateTime: string
 }
 
@@ -134,16 +131,9 @@ const delete_btn = (row: any) => {
     <el-table :data="employeeList" stripe>
       <!-- <el-table-column prop="id" label="id" /> -->
       <el-table-column prop="name" label="氏名" align="center" />
-      <el-table-column prop="account" label="アカウント" align="center" />
+      <el-table-column prop="username" label="アカウント" align="center" />
       <el-table-column prop="phone" label="電話番号" width="120px" align="center" />
-      <el-table-column prop="age" label="年齢" align="center" />
-      <el-table-column prop="gender" label="性別" align="center" />
-      <el-table-column prop="pic" label="顔写真" align="center">
-        <template #default="scope">
-          <img v-if="scope.row.pic" :src="resolveImageUrl(scope.row.pic)" alt="" />
-          <img v-else src="/src/assets/image/user_default.png" alt="" />
-        </template>
-      </el-table-column>
+      <el-table-column prop="sex" label="性別" align="center" />
       <el-table-column prop="status" label="状態" align="center">
         <template #default="scope">
           <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'" round>
@@ -157,7 +147,7 @@ const delete_btn = (row: any) => {
         <template #default="scope">
           <!-- <el-button @click="update_btn(scope.row)" type="primary">修改</el-button> -->
           <el-button @click="update_btn(scope.row)" type="primary" :disabled="userInfoStore.userInfo?.userName !== 'admin'
-            && userInfoStore.userInfo?.userName !== scope.row.userName ? true : false">編集
+            && userInfoStore.userInfo?.userName !== scope.row.username ? true : false">編集
           </el-button>
           <el-button @click="change_btn(scope.row)" plain :type="scope.row.status === 1 ? 'danger' : 'primary'"
             :disabled="userInfoStore.userInfo?.userName !== 'admin' ? true : false">

@@ -15,6 +15,8 @@ import {
 import type { Order, OrderVO } from '@/types/order'
 import { ElMessage } from 'element-plus'
 import { resolveImageUrl as resolveImageUrlByRule } from '@/utils/image'
+import { normalizeOrderId, normalizeOrderRecord, resolveActiveOrderId } from '@/utils/orderId'
+import { useOrderNotifyStore } from '@/store/orderNotify'
 
 /** 取消／拒单ダイアログのモード（日本語で統一し比較に使用） */
 const DLG_CANCEL = 'キャンセル'
@@ -30,6 +32,7 @@ type OrderStatics = {
 const defaultActivity = ref(0)
 const orderStatics = ref<OrderStatics>()
 const my_row = ref<Order>()
+const acceptLoading = ref(false)
 const isAutoNext = ref(true)
 const isTableOperateBtn = ref(true)
 // const currentPageIndex = ref(0) //记录查看详情数据的index
@@ -106,13 +109,8 @@ const tabChange = (index: number) => {
 
 const route = useRoute()
 const router = useRouter()
+const orderNotifyStore = useOrderNotifyStore()
 
-const normalizeOrderId = (id: unknown): string | null => {
-  if (id === null || id === undefined) return null
-  const s = String(id).trim()
-  if (!/^\d+$/.test(s)) return null
-  return s
-}
 const toAmount = (value: unknown) => {
   const n = Number(value)
   return Number.isFinite(n) ? n : 0
@@ -173,7 +171,7 @@ const init = async (tabStatus: number = 0, search?: boolean) => {
   try {
     const res = await getOrderDetailPageAPI(params)
     if (res.data.code === 1) {
-      tableData.value = res.data.data.records
+      tableData.value = (res.data.data.records || []).map((row: any) => normalizeOrderRecord(row))
       orderStatus.value = tabStatus
       counts.value = Number(res.data.data.total)
       await getOrderListBy3Status()
@@ -234,65 +232,128 @@ const goDetail = async (id: unknown, status: number, row?: any) => {
       return
     }
 
-    diaForm.value=payload.data
+    diaForm.value = payload.data
+    const detailStatus = Number(diaForm.value?.status ?? status)
     console.log('snapshotAddress=', diaForm.value?.snapshotAddress)
 
-    my_row.value=row || { id: detailId, status }
-    // my_row.value = row || { id: route.query.orderId, status: status }
-    // // Object.assign(my_row.value, row || { id: route.query.orderId, status: status })
-    // console.log('传给你这个my_row', my_row.value)
-    // if (route.query.orderId) {
-    //   router.push('/order')
-    // }
+    my_row.value = row
+      ? normalizeOrderRecord({ ...row, id: detailId, status: detailStatus })
+      : { id: detailId, status: detailStatus }
     dialogVisible.value = true
-    dialogOrderStatus.value = status
+    dialogOrderStatus.value = detailStatus
   } catch (err) {
     console.error('请求出错了：', err)
   }
 }
 
+const resolveRowOrderId = (row?: { id?: unknown }) =>
+  resolveActiveOrderId({
+    detailId: diaForm.value?.id,
+    cachedId: orderId.value,
+    rowId: row?.id,
+  })
+
 // 接单
-const orderAccept = async (row: any) => {
-  console.log('接单', row)
-  orderId.value = row!.id
-  dialogOrderStatus.value = row.status
+const orderAccept = async (row?: { id?: unknown; status?: number }) => {
+  if (acceptLoading.value) return
+  const idStr = resolveRowOrderId(row)
+  if (!idStr) {
+    ElMessage.error('注文IDが無効です')
+    return
+  }
+  orderId.value = idStr
+  if (row?.status != null) dialogOrderStatus.value = row.status
+  acceptLoading.value = true
   try {
-    const res = await orderAcceptAPI({ id: orderId.value })
+    const res = await orderAcceptAPI({ id: idStr })
     if (res.data.code === 1) {
-      console.log('操作成功')
       orderId.value = ''
       dialogVisible.value = false
       await init(orderStatus.value)
       ElMessage.success('注文を受付ました')
     } else {
-      throw new Error(res.data.message)
+      throw new Error(res.data.message || res.data.msg || '受付に失敗しました')
     }
-  } catch (err) {
-    console.error('请求出错了：', err)
+  } catch (err: any) {
+    console.error('受付に失敗：', err)
+    const msg = err?.response?.data?.message || err?.response?.data?.msg || err?.message
+    ElMessage.error(msg || '受付に失敗しました')
+  } finally {
+    acceptLoading.value = false
   }
 }
 
+const handleOrderAcceptFromDialog = () => {
+  isTableOperateBtn.value = false
+  void orderAccept()
+}
+
+const handleOrderAcceptFromTable = (row: any) => {
+  isTableOperateBtn.value = true
+  void orderAccept(row)
+}
+
+const handleDeliveryFromDialog = () => {
+  const idStr = resolveRowOrderId()
+  if (!idStr) {
+    ElMessage.error('注文IDが無効です')
+    return
+  }
+  void deliveryOrComplete(3, idStr)
+}
+
+const handleCompleteFromDialog = () => {
+  const idStr = resolveRowOrderId()
+  if (!idStr) {
+    ElMessage.error('注文IDが無効です')
+    return
+  }
+  void deliveryOrComplete(4, idStr)
+}
+
 // 打开拒单弹窗
-const orderReject = (row: any) => {
-  console.log('拒单', row)
+const orderReject = (row?: { id?: unknown; status?: number }) => {
+  const idStr = resolveRowOrderId(row)
+  if (!idStr) {
+    ElMessage.error('注文IDが無効です')
+    return
+  }
   cancelDialogVisible.value = true
-  orderId.value = row.id
-  dialogOrderStatus.value = row.status
+  orderId.value = idStr
+  if (row?.status != null) dialogOrderStatus.value = row.status
   cancelDialogTitle.value = DLG_REJECT
   dialogVisible.value = false
   cancelReason.value = ''
 }
 
+const handleOrderRejectFromDialog = () => {
+  isTableOperateBtn.value = false
+  orderReject()
+}
+
+const handleCancelFromDialog = () => {
+  cancelOrder()
+}
+
+const handleRejectFromTable = (row: any) => {
+  isTableOperateBtn.value = true
+  orderReject(row)
+}
+
 // 打开取消订单弹窗
-const cancelOrder = (row: any) => {
+const cancelOrder = (row?: { id?: unknown; status?: number }) => {
   if (!isMerchantCancelEnabled) {
     ElMessage.warning('キャンセルAPIが未設定です。バックエンド連携後に有効にしてください')
     return
   }
-  console.log('取消订单', row)
+  const idStr = resolveRowOrderId(row)
+  if (!idStr) {
+    ElMessage.error('注文IDが無効です')
+    return
+  }
   cancelDialogVisible.value = true
-  orderId.value = row.id
-  dialogOrderStatus.value = row.status
+  orderId.value = idStr
+  if (row?.status != null) dialogOrderStatus.value = row.status
   cancelDialogTitle.value = DLG_CANCEL
   dialogVisible.value = false
   cancelReason.value = ''
@@ -310,9 +371,14 @@ const confirmCancel = async () => {
   } else if (cancelReason.value === REASON_CUSTOM && !remark.value) {
     return ElMessage.error(`${cancelDialogTitle.value}の理由を入力してください`)
   }
+  const idStr = normalizeOrderId(orderId.value)
+  if (!idStr) {
+    ElMessage.error('注文IDが無効です')
+    return
+  }
   try {
     const res = await (cancelDialogTitle.value === DLG_CANCEL ? orderCancelAPI : orderRejectAPI)({
-      id: orderId.value,
+      id: idStr,
       [cancelDialogTitle.value === DLG_CANCEL ? 'cancelReason' : 'rejectionReason']:
         cancelReason.value === REASON_CUSTOM ? remark.value : cancelReason.value,
     })
@@ -326,8 +392,9 @@ const confirmCancel = async () => {
     } else {
       throw new Error(res.data.message)
     }
-  } catch (err) {
-    console.error('请求出错了：', err)
+  } catch (err: any) {
+    console.error('拒否/キャンセルに失敗：', err)
+    ElMessage.error(err?.message || '操作に失敗しました')
   }
 }
 
@@ -398,14 +465,26 @@ const getOrderType = (row: any) => {
 const routeStatus = Number(route.query.status) || 0
 activeIndex.value = routeStatus
 init(routeStatus)
+
+watch(
+  () => orderNotifyStore.tick,
+  (tick) => {
+    if (tick <= 0) return
+    void init(orderStatus.value)
+    void getOrderListBy3Status()
+  }
+)
+
 onMounted(async () => {
   if (route.query.status) defaultActivity.value = Number(route.query.status)
-  // 获取订单统计数据（3种状态的数量）
   await getOrderListBy3Status()
   // 如果路径中有orderId值，说明是点击右上角消息通知进来的
   const qid = route.query.orderId
-  if (qid && qid !== 'undefined') {
-    goDetail(Array.isArray(qid) ? qid[0] : qid, 2)
+  const queryOrderId = normalizeOrderId(Array.isArray(qid) ? qid[0] : qid)
+  if (queryOrderId) {
+    const queryStatus = Number(route.query.status) || 2
+    await goDetail(queryOrderId, queryStatus)
+    router.replace({ path: '/order', query: { status: String(orderStatus.value || queryStatus) } })
   }
 })
 </script>
@@ -483,7 +562,7 @@ onMounted(async () => {
             <div class="btn_box">
               <div class="before">
                 <el-button v-if="scope.row.status === 2" type="primary" link
-                  @click="orderAccept(scope.row), (isTableOperateBtn = true)">
+                  @click="handleOrderAcceptFromTable(scope.row)">
                   受付
                 </el-button>
                 <el-button v-if="scope.row.status === 3" type="primary" link
@@ -498,7 +577,7 @@ onMounted(async () => {
               <el-divider direction="vertical" />
               <div class="middle">
                 <el-button v-if="scope.row.status === 2" type="danger" link
-                  @click="orderReject(scope.row), (isTableOperateBtn = true)">
+                  @click="handleRejectFromTable(scope.row)">
                   拒否
                 </el-button>
                 <el-button v-if="[1, 3, 4].includes(scope.row.status)" type="danger" link
@@ -649,15 +728,19 @@ onMounted(async () => {
         <span v-if="dialogOrderStatus !== 6" class="dialog-footer">
           <el-checkbox v-if="dialogOrderStatus === 2 && orderStatus === 2" v-model="isAutoNext">処理後、次の注文へ自動表示</el-checkbox>
           <div>
-            <el-button v-if="dialogOrderStatus === 2" @click="orderReject(my_row), (isTableOperateBtn = false)">拒否</el-button>
-            <el-button v-if="dialogOrderStatus === 2" type="primary"
-              @click="orderAccept(my_row), (isTableOperateBtn = false)">受付</el-button>
+            <el-button v-if="dialogOrderStatus === 2" @click="handleOrderRejectFromDialog">拒否</el-button>
+            <el-button
+              v-if="dialogOrderStatus === 2"
+              type="primary"
+              :loading="acceptLoading"
+              @click="handleOrderAcceptFromDialog"
+            >受付</el-button>
 
             <el-button v-if="[1, 3, 4, 5].includes(dialogOrderStatus)" @click="dialogVisible = false">閉じる</el-button>
-            <el-button v-if="dialogOrderStatus === 3" type="primary" @click="deliveryOrComplete(3, my_row!.id)">配達へ</el-button>
-            <el-button v-if="dialogOrderStatus === 4" type="primary" @click="deliveryOrComplete(4, my_row!.id)">完了</el-button>
+            <el-button v-if="dialogOrderStatus === 3" type="primary" @click="handleDeliveryFromDialog">配達へ</el-button>
+            <el-button v-if="dialogOrderStatus === 4" type="primary" @click="handleCompleteFromDialog">完了</el-button>
             <el-button v-if="[1].includes(dialogOrderStatus)" type="primary"
-              @click="cancelOrder(my_row)">注文をキャンセル</el-button>
+              @click="handleCancelFromDialog">注文をキャンセル</el-button>
           </div>
         </span>
       </template>

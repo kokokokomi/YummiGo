@@ -21,7 +21,8 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useOrderNotifyStore } from '@/store/orderNotify'
 import { getBusinessDataAPI, getOrderDataAPI, getOverviewDishesAPI, getSetMealStatisticsAPI } from '@/api/dashboard'
 import { getOrderListByAPI } from '@/api/order'
 import Overview from './components/overview.vue'
@@ -36,6 +37,7 @@ const orderviewData = ref<any>({})
 const dishesData = ref<any>({})
 const setMealData = ref<any>({})
 const orderStatics = ref<any>({})
+const orderNotifyStore = useOrderNotifyStore()
 
 // 初始化加载数据
 const init = async () => {
@@ -62,15 +64,26 @@ const init = async () => {
 const getOrderListBy3Status = async () => {
   try {
     const res = await getOrderListByAPI()
-    if (res.data.code === 0) {
+    if (res.data.code === 1) {
       orderStatics.value = res.data.data
     } else {
-      console.error(res.data.msg)
+      console.error(res.data.message || res.data.msg)
     }
   } catch (err) {
     console.error('请求出错了: ', err)
   }
 }
+
+watch(
+  () => orderNotifyStore.tick,
+  (tick) => {
+    if (tick <= 0) return
+    void getOrderListBy3Status()
+    void getOrderDataAPI().then((orderData) => {
+      orderviewData.value = orderData.data.data
+    }).catch(() => {})
+  }
+)
 
 onMounted(() => {
   init()

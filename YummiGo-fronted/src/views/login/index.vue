@@ -119,7 +119,7 @@ const loginFn = async () => {
       </el-form-item>
       <el-form-item class="my-el-form-item">
         <el-button type="primary" class="btn-login" @click="loginFn">ログイン</el-button>
-        <el-link type="info" @click="$router.push('/reg')">新規登録へ</el-link>
+        <el-text type="info">スタッフ登録は管理者が行います</el-text>
       </el-form-item>
     </el-form>
   </div>
