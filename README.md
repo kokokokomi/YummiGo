@@ -340,11 +340,3 @@ CLI に表示される `whsec_...` を `application-dev.yml` の `sy.stripe.webh
 Webhook エンドポイントは `POST /user/stripe/webhook` または `POST /notify/stripe/webhook` を利用できます。
 
 ---
-
-## 注意事項
-
-- `application-dev.yml`、`.env`、`node_modules`、`target` などは Git 管理対象外です。
-- Stripe Secret Key、Webhook Secret、OSS Access Key、Google OAuth Client Secret などの秘密情報はコミットしないでください。
-- 本番環境では HTTPS、Nginx の WebSocket プロキシ、Stripe Webhook の署名検証、OSS の最小権限設定を行ってください。
-- 管理画面ディレクトリ名は現在 `YummiGo-fronted` です。`frontend` ではないため、コマンド実行時は注意してください。
-
